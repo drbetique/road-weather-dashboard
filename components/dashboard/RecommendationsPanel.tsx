@@ -26,7 +26,7 @@ const treatmentIcons: Record<string, string> = {
 };
 
 export function RecommendationsPanel({ recommendations, loading, role, t, compact }: Props) {
-  const sorted = [...recommendations].sort((a, b) => Number(b.urgency ?? 0) - Number(a.urgency ?? 0));
+  const sorted = [...recommendations].sort((a, b) => (b.urgency_level ?? 0) - (a.urgency_level ?? 0));
 
   if (loading) return (
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -59,7 +59,7 @@ export function RecommendationsPanel({ recommendations, loading, role, t, compac
 
       <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "4px" }}>
         {sorted.slice(0, compact ? 6 : 20).map((rec, i) => {
-          const c = urgencyConfig(Number(rec.urgency ?? 1), t);
+          const c = urgencyConfig(rec.urgency_level ?? 1, t);
           const icon = treatmentIcons[rec.treatment_type ?? ""] ?? "⚠️";
           return (
             <div key={i} style={{

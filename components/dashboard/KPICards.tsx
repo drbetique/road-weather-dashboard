@@ -24,7 +24,7 @@ export function KPICards({ summary, loading, t }: Props) {
   const cards = [
     {
       label: t.stations_monitored,
-      value: loading ? "—" : String(summary?.total_stations ?? 0),
+      value: loading ? "—" : String(summary?.stations_count ?? 0),
       sub: t.stations_subtitle,
       accent: "var(--cyan)",
       trend: "100% uptime",
@@ -32,31 +32,21 @@ export function KPICards({ summary, loading, t }: Props) {
     },
     {
       label: t.treatment_needed,
-      value: loading ? "—" : String(summary?.stations_needing_treatment ?? 0),
+      value: loading ? "—" : String(summary?.treatment_needed_count ?? 0),
       sub: t.treatment_subtitle,
       accent: "var(--amber)",
-      trend: (summary?.stations_needing_treatment ?? 0) > 0
-        ? `+${summary?.stations_needing_treatment}`
+      trend: (summary?.treatment_needed_count ?? 0) > 0
+        ? `+${summary?.treatment_needed_count}`
         : t.urgency_NONE,
-      trendUp: (summary?.stations_needing_treatment ?? 0) > 0,
+      trendUp: (summary?.treatment_needed_count ?? 0) > 0,
     },
     {
       label: t.act_now,
-      value: loading ? "—" : String(summary?.critical_stations ?? 0),
+      value: loading ? "—" : String(summary?.critical_count ?? 0),
       sub: t.act_now_subtitle,
-      accent: (summary?.critical_stations ?? 0) > 0 ? "var(--red)" : "var(--green)",
-      trend: (summary?.critical_stations ?? 0) > 0 ? t.urgency_CRITICAL : t.urgency_NONE,
-      trendUp: (summary?.critical_stations ?? 0) > 0,
-    },
-    {
-      label: t.road_temp,
-      value: loading ? "—" : summary?.avg_road_temp !== undefined && summary.avg_road_temp !== null
-        ? `${summary.avg_road_temp.toFixed(1)}°`
-        : "—",
-      sub: "°C surface avg",
-      accent: "var(--cyan)",
-      trend: (summary?.avg_road_temp ?? 0) < 0 ? t.road_dangerous : t.road_good,
-      trendUp: (summary?.avg_road_temp ?? 0) < 0,
+      accent: (summary?.critical_count ?? 0) > 0 ? "var(--red)" : "var(--green)",
+      trend: (summary?.critical_count ?? 0) > 0 ? t.urgency_CRITICAL : t.urgency_NONE,
+      trendUp: (summary?.critical_count ?? 0) > 0,
     },
     {
       label: t.tonight_conditions,
@@ -65,6 +55,14 @@ export function KPICards({ summary, loading, t }: Props) {
       accent: riskColor,
       trend: riskLevel >= 3 ? t.forecast_high : t.forecast_safe,
       trendUp: riskLevel >= 3,
+    },
+    {
+      label: t.priority_alert,
+      value: loading ? "—" : summary?.priority_station ?? "—",
+      sub: t.stations_require_attention,
+      accent: summary?.priority_station ? "var(--red)" : "var(--green)",
+      trend: summary?.priority_station ? t.urgency_URGENT : t.urgency_NONE,
+      trendUp: !!summary?.priority_station,
     },
   ];
 
@@ -88,10 +86,11 @@ export function KPICards({ summary, loading, t }: Props) {
           </div>
           <div style={{
             fontFamily: "Syne, sans-serif",
-            fontSize: card.value.length > 6 ? "16px" : "28px",
+            fontSize: card.value.length > 10 ? "13px" : card.value.length > 6 ? "16px" : "28px",
             fontWeight: 800,
             color: loading ? "var(--text-dim)" : card.accent,
             lineHeight: 1, marginBottom: "4px", transition: "color 0.3s",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}>
             {loading ? <span style={{ animation: "blink 1.5s infinite", display: "inline-block" }}>——</span> : card.value}
           </div>
