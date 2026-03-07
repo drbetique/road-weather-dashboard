@@ -73,7 +73,7 @@ export function RecommendationsPanel({ recommendations, loading, role, t, compac
                   {rec.station_name}
                 </div>
                 <div style={{ fontSize: "9px", color: "var(--text-dim)" }}>
-                  {rec.amount_g_m2 ? `${rec.amount_g_m2} g/m²` : ""} {rec.treatment_type?.replace(/_/g, " ")}
+                  {rec.salt_amount_gm2 ? `${rec.salt_amount_gm2} g/m²` : ""} {rec.treatment_type?.replace(/_/g, " ")}
                 </div>
               </div>
               <span style={{

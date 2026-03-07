@@ -332,7 +332,7 @@ export default function DashboardPage() {
                           </div>
                           <div style={{ fontSize: "9px", color: "var(--text-dim)" }}>📍 {rec.station_name}</div>
                           <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "2px" }}>
-                            {rec.amount_g_m2} g/m²
+                            {rec.salt_amount_gm2} g/m²
                           </div>
                         </div>
                       ))}
