@@ -1,16 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   AreaChart, Area,
   BarChart, Bar,
   LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer, Cell,
+  Legend, ResponsiveContainer,
 } from "recharts";
 import { useLang } from "@/components/providers/Providers";
-import { translations } from "@/lib/translations";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
@@ -20,72 +18,104 @@ async function fetchJSON(path: string) {
   return res.json();
 }
 
-function ChartCard({ title, subtitle, children, loading }: {
-  title: string; subtitle: string; children: React.ReactNode; loading: boolean;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="card-base p-5"
-    >
-      <div className="mb-4">
-        <p className="section-label">{title}</p>
-        <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{subtitle}</p>
-      </div>
-      {loading ? (
-        <div className="h-52 rounded-lg animate-pulse" style={{ background: "rgba(255,255,255,0.04)" }} />
-      ) : children}
-    </motion.div>
-  );
-}
-
-const tooltipStyle = {
-  contentStyle: {
-    background: "var(--bg-card)",
-    border: "1px solid rgba(59,130,246,0.3)",
-    borderRadius: "8px",
-    fontSize: "11px",
-    fontFamily: "'JetBrains Mono', monospace",
-  },
-  labelStyle: { color: "var(--text-secondary)" },
-};
-
-const axisStyle = {
-  tick: { fontSize: 10, fontFamily: "'JetBrains Mono', monospace", fill: "#475569" },
-  axisLine: { stroke: "rgba(59,130,246,0.1)" },
-  tickLine: false as const,
-};
-
 const urgencyColors: Record<string, string> = {
-  NONE: "#10b981",
-  MONITOR: "#3b82f6",
-  PREVENTIVE: "#f59e0b",
-  STANDARD: "#f97316",
-  URGENT: "#ef4444",
+  NONE: "#00e676",
+  MONITOR: "#00e5ff",
+  PREVENTIVE: "#ffb300",
+  STANDARD: "#ff9800",
+  URGENT: "#ff3b3b",
   CRITICAL: "#dc2626",
 };
 
+const axisStyle = {
+  tick: { fontSize: 9, fontFamily: "Space Mono, monospace", fill: "var(--text-dim)" },
+  axisLine: { stroke: "var(--border)" },
+  tickLine: false as const,
+};
+
+const tooltipStyle = {
+  contentStyle: {
+    background: "var(--bg2)",
+    border: "1px solid var(--border2)",
+    borderRadius: "0",
+    fontSize: "10px",
+    fontFamily: "Space Mono, monospace",
+    color: "var(--text)",
+  },
+  labelStyle: { color: "var(--text-dim)" },
+};
+
+function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div style={{ marginBottom: "10px" }}>
+      <div style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase" }}>{title}</div>
+      <div style={{ fontSize: "9px", color: "var(--text-dim)", opacity: 0.6, marginTop: "2px" }}>{subtitle}</div>
+    </div>
+  );
+}
+
+function ChartBox({ title, subtitle, loading, children }: { title: string; subtitle: string; loading: boolean; children: React.ReactNode }) {
+  return (
+    <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", padding: "16px" }}>
+      <SectionHeader title={title} subtitle={subtitle} />
+      {loading ? (
+        <div style={{ height: "180px", background: "var(--bg3)", animation: "blink 1.5s infinite" }} />
+      ) : children}
+    </div>
+  );
+}
+
+function toYMD(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function daysAgo(n: number) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return toYMD(d);
+}
+
 export function HistoryTab() {
   const { lang } = useLang();
-  const [days, setDays] = useState(7);
+  const fi = lang === "fi";
+
+  const [preset, setPreset] = useState<number | null>(7);
+  const [startDate, setStartDate] = useState(daysAgo(7));
+  const [endDate, setEndDate] = useState(toYMD(new Date()));
+  const [applied, setApplied] = useState({ start: daysAgo(7), end: toYMD(new Date()) });
+
   const [tempHistory, setTempHistory] = useState<any[]>([]);
   const [treatHistory, setTreatHistory] = useState<any[]>([]);
   const [riskHistory, setRiskHistory] = useState<any[]>([]);
   const [comparison, setComparison] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  function applyPreset(d: number) {
+    setPreset(d);
+    const s = daysAgo(d);
+    const e = toYMD(new Date());
+    setStartDate(s);
+    setEndDate(e);
+    setApplied({ start: s, end: e });
+  }
+
+  function applyCustom() {
+    setPreset(null);
+    setApplied({ start: startDate, end: endDate });
+  }
+
+  const dayCount = Math.max(1, Math.round((new Date(applied.end).getTime() - new Date(applied.start).getTime()) / 86400000));
+
   useEffect(() => {
     async function load() {
       setLoading(true);
       const [temp, treat, risk, comp] = await Promise.all([
-        fetchJSON(`/weather/history?days=${days}`),
-        fetchJSON(`/treatments/history?days=${days}`),
-        fetchJSON(`/risks/history?days=${days}`),
+        fetchJSON(`/weather/history?days=${dayCount}`),
+        fetchJSON(`/treatments/history?days=${dayCount}`),
+        fetchJSON(`/risks/history?days=${dayCount}`),
         fetchJSON(`/weather/compare`),
       ]);
 
-      // Aggregate temp by date (average across stations)
       const tempByDate: Record<string, any> = {};
       for (const row of temp) {
         const d = row.date;
@@ -101,167 +131,214 @@ export function HistoryTab() {
         }))
         .reverse();
 
-      // Aggregate treatments by date
       const treatByDate: Record<string, any> = {};
       for (const row of treat) {
         const d = row.date;
         if (!treatByDate[d]) treatByDate[d] = { date: d.slice(5) };
         treatByDate[d][row.urgency_name] = (treatByDate[d][row.urgency_name] || 0) + Number(row.count);
       }
-      const treatData = Object.values(treatByDate).reverse();
 
       setTempHistory(tempData);
-      setTreatHistory(treatData);
+      setTreatHistory(Object.values(treatByDate).reverse());
       setRiskHistory([...risk].reverse().map((r: any) => ({ ...r, date: r.date.slice(5) })));
       setComparison(comp);
       setLoading(false);
     }
     load();
-  }, [days]);
+  }, [applied, dayCount]);
 
-  const hasData = tempHistory.some((d) => d.avg_air !== null);
+  const hasData = tempHistory.some(d => d.avg_air !== null);
+
+  const inputStyle: React.CSSProperties = {
+    background: "var(--bg3)", border: "1px solid var(--border2)",
+    color: "var(--text)", fontFamily: "Space Mono, monospace",
+    fontSize: "10px", padding: "5px 8px", outline: "none",
+    colorScheme: "dark",
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Controls */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* HEADER + DATE CONTROLS */}
+      <div style={{
+        background: "var(--bg2)", border: "1px solid var(--border)",
+        padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
+      }}>
         <div>
-          <p className="section-label">📊 {lang === "fi" ? "Historiallinen analyysi" : "Historical Analysis"}</p>
-          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-            {lang === "fi" ? "Tietojen trendit ajan myötä" : "Data trends over time"}
-          </p>
+          <div style={{ fontSize: "11px", color: "var(--text-bright)", fontWeight: 700, letterSpacing: "0.08em" }}>
+            📊 {fi ? "Historiallinen analyysi" : "Historical Analysis"}
+          </div>
+          <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "2px" }}>
+            {fi ? "Tietojen trendit ajan myötä" : "Data trends over time"} · {fi ? "Näytetään" : "Showing"} {dayCount} {fi ? "päivää" : "days"}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-            {lang === "fi" ? "Näytä" : "Show"}:
-          </span>
-          {[7, 14, 30].map((d) => (
-            <button
-              key={d}
-              onClick={() => setDays(d)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={{
-                background: days === d ? "rgba(59,130,246,0.2)" : "rgba(255,255,255,0.04)",
-                border: days === d ? "1px solid rgba(59,130,246,0.4)" : "1px solid var(--border)",
-                color: days === d ? "#60a5fa" : "var(--text-muted)",
-              }}
-            >
-              {d}d
+
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {/* Preset buttons */}
+          <div style={{ display: "flex", gap: "2px", background: "var(--bg3)", border: "1px solid var(--border)", padding: "3px" }}>
+            {[7, 14, 30].map(d => (
+              <button key={d} onClick={() => applyPreset(d)} style={{
+                padding: "4px 10px", fontSize: "9px", letterSpacing: "0.1em",
+                cursor: "pointer", border: "none",
+                background: preset === d ? "var(--cyan-dim)" : "transparent",
+                color: preset === d ? "var(--cyan)" : "var(--text-dim)",
+                borderBottom: preset === d ? "1px solid var(--cyan)" : "1px solid transparent",
+              }}>
+                {d}{fi ? "pv" : "d"}
+              </button>
+            ))}
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: "1px", height: "24px", background: "var(--border)" }} />
+
+          {/* Custom date range */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              {fi ? "Alku" : "From"}
+            </span>
+            <input
+              type="date"
+              value={startDate}
+              max={endDate}
+              onChange={e => { setStartDate(e.target.value); setPreset(null); }}
+              style={inputStyle}
+            />
+            <span style={{ fontSize: "9px", color: "var(--text-dim)" }}>—</span>
+            <span style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              {fi ? "Loppu" : "To"}
+            </span>
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              max={toYMD(new Date())}
+              onChange={e => { setEndDate(e.target.value); setPreset(null); }}
+              style={inputStyle}
+            />
+            <button onClick={applyCustom} style={{
+              padding: "5px 12px", fontSize: "9px", letterSpacing: "0.1em",
+              textTransform: "uppercase", cursor: "pointer",
+              background: preset === null ? "var(--cyan-dim)" : "var(--bg3)",
+              border: preset === null ? "1px solid var(--cyan)" : "1px solid var(--border2)",
+              color: preset === null ? "var(--cyan)" : "var(--text-dim)",
+            }}>
+              {fi ? "Hae" : "Apply"}
             </button>
-          ))}
+          </div>
         </div>
       </div>
 
-      {/* No data notice */}
+      {/* NO DATA */}
       {!loading && !hasData && (
-        <div className="card-base p-8 text-center">
-          <span className="text-3xl block mb-3">📊</span>
-          <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-            {lang === "fi" ? "Ei historiallisia tietoja vielä" : "No historical data yet"}
-          </p>
-          <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
-            {lang === "fi"
-              ? "Kerää tietoja vähintään 24 tuntia nähdäksesi trendit"
-              : "Collect data for at least 24 hours to see trends here"}
-          </p>
+        <div style={{
+          background: "var(--bg2)", border: "1px solid var(--border)",
+          padding: "40px", textAlign: "center",
+        }}>
+          <div style={{ fontSize: "28px", marginBottom: "10px" }}>📊</div>
+          <div style={{ fontSize: "11px", color: "var(--text-dim)", letterSpacing: "0.1em" }}>
+            {fi ? "EI HISTORIALLISIA TIETOJA" : "NO HISTORICAL DATA"}
+          </div>
+          <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "6px", opacity: 0.6 }}>
+            {fi ? "Kerää tietoja vähintään 24 tuntia" : "Collect data for at least 24 hours"}
+          </div>
         </div>
       )}
 
-      {/* Temperature trends */}
-      <ChartCard
-        title={`🌡️ ${lang === "fi" ? "Lämpötilatrendit" : "Temperature Trends"}`}
-        subtitle={lang === "fi" ? "Keskilämpötila päivittäin" : "Average temperature per day"}
+      {/* TEMPERATURE CHART */}
+      <ChartBox
+        title={`🌡️ ${fi ? "Lämpötilatrendit" : "Temperature Trends"}`}
+        subtitle={fi ? "Keskilämpötila päivittäin" : "Average temperature per day"}
         loading={loading}
       >
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={tempHistory} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={tempHistory} margin={{ top: 8, right: 8, left: -25, bottom: 0 }}>
             <defs>
               <linearGradient id="airGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="5%" stopColor="#00e5ff" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#00e5ff" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="roadGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#ff3b3b" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#ff3b3b" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="date" {...axisStyle} />
             <YAxis {...axisStyle} unit="°" />
             <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0}°C`]} />
-            <Legend wrapperStyle={{ fontSize: "11px" }}
-              formatter={(v) => <span style={{ color: "var(--text-secondary)" }}>{v === "avg_air" ? (lang === "fi" ? "Ilma" : "Air") : (lang === "fi" ? "Tie" : "Road")}</span>}
+            <Legend wrapperStyle={{ fontSize: "9px", fontFamily: "Space Mono, monospace" }}
+              formatter={v => <span style={{ color: "var(--text-dim)" }}>{v === "avg_air" ? (fi ? "Ilma" : "Air") : (fi ? "Tie" : "Road")}</span>}
             />
-            <Area type="monotone" dataKey="avg_air" stroke="#ef4444" strokeWidth={2} fill="url(#airGrad)" dot={false} />
-            <Area type="monotone" dataKey="avg_road" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#roadGrad)" dot={false} />
+            <Area type="monotone" dataKey="avg_air" stroke="var(--cyan)" strokeWidth={1.5} fill="url(#airGrad)" dot={false} />
+            <Area type="monotone" dataKey="avg_road" stroke="var(--red)" strokeWidth={1.5} strokeDasharray="4 3" fill="url(#roadGrad)" dot={false} />
           </AreaChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartBox>
 
-      {/* Two column: Treatment history + Risk frequency */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard
-          title={`🧂 ${lang === "fi" ? "Toimenpidethistoria" : "Treatment History"}`}
-          subtitle={lang === "fi" ? "Suositukset päivittäin kiireellisyyden mukaan" : "Daily recommendations by urgency"}
+      {/* TREATMENT + RISK */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <ChartBox
+          title={`🧂 ${fi ? "Toimenpidethistoria" : "Treatment History"}`}
+          subtitle={fi ? "Suositukset päivittäin kiireellisyyden mukaan" : "Daily recommendations by urgency"}
           loading={loading}
         >
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart data={treatHistory} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="date" {...axisStyle} />
               <YAxis {...axisStyle} />
               <Tooltip {...tooltipStyle} />
-              {["URGENT", "STANDARD", "PREVENTIVE", "MONITOR"].map((u) => (
-                <Bar key={u} dataKey={u} stackId="a" fill={urgencyColors[u]} radius={u === "URGENT" ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+              {["URGENT", "STANDARD", "PREVENTIVE", "MONITOR"].map(u => (
+                <Bar key={u} dataKey={u} stackId="a" fill={urgencyColors[u]} radius={u === "URGENT" ? [2, 2, 0, 0] : [0, 0, 0, 0]} />
               ))}
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartBox>
 
-        <ChartCard
-          title={`⚠️ ${lang === "fi" ? "Vaaratilanteiden tiheys" : "Risk Period Frequency"}`}
-          subtitle={lang === "fi" ? "Kiireelliset tilanteet päivittäin" : "Urgent situations per day"}
+        <ChartBox
+          title={`⚠️ ${fi ? "Vaaratilanteiden tiheys" : "Risk Period Frequency"}`}
+          subtitle={fi ? "Kiireelliset tilanteet päivittäin" : "Urgent situations per day"}
           loading={loading}
         >
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={180}>
             <BarChart data={riskHistory} margin={{ top: 5, right: 5, left: -30, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="date" {...axisStyle} />
               <YAxis {...axisStyle} />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="urgent_count" name={lang === "fi" ? "Kiireellinen" : "Urgent"} fill="#ef4444" opacity={0.8} radius={[3, 3, 0, 0]} />
-              <Bar dataKey="critical_count" name={lang === "fi" ? "Hätätilanne" : "Critical"} fill="#dc2626" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="urgent_count" name={fi ? "Kiireellinen" : "Urgent"} fill="var(--amber)" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="critical_count" name={fi ? "Hätätilanne" : "Critical"} fill="var(--red)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
-        </ChartCard>
+        </ChartBox>
       </div>
 
-      {/* This week vs last week */}
-      <ChartCard
-        title={`📅 ${lang === "fi" ? "Tämä viikko vs viime viikko" : "This Week vs Last Week"}`}
-        subtitle={lang === "fi" ? "Keskilämpötilat viikonpäivittäin" : "Average air temperature by weekday"}
+      {/* WEEK COMPARISON */}
+      <ChartBox
+        title={`📅 ${fi ? "Tämä viikko vs viime viikko" : "This Week vs Last Week"}`}
+        subtitle={fi ? "Keskilämpötilat viikonpäivittäin" : "Average air temperature by weekday"}
         loading={loading}
       >
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={comparison} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={comparison} margin={{ top: 8, right: 8, left: -25, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="day_of_week" {...axisStyle} />
             <YAxis {...axisStyle} unit="°" />
             <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0}°C`]} />
-            <Legend wrapperStyle={{ fontSize: "11px" }}
-              formatter={(v) => (
-                <span style={{ color: "var(--text-secondary)" }}>
-                  {v === "this_week_avg_air"
-                    ? (lang === "fi" ? "Tämä viikko" : "This week")
-                    : (lang === "fi" ? "Viime viikko" : "Last week")}
+            <Legend wrapperStyle={{ fontSize: "9px", fontFamily: "Space Mono, monospace" }}
+              formatter={v => (
+                <span style={{ color: "var(--text-dim)" }}>
+                  {v === "this_week_avg_air" ? (fi ? "Tämä viikko" : "This week") : (fi ? "Viime viikko" : "Last week")}
                 </span>
               )}
             />
-            <Line type="monotone" dataKey="this_week_avg_air" stroke="#60a5fa" strokeWidth={2} dot={{ fill: "#60a5fa", r: 3 }} />
-            <Line type="monotone" dataKey="last_week_avg_air" stroke="#475569" strokeWidth={1.5} strokeDasharray="4 3" dot={{ fill: "#475569", r: 2 }} />
+            <Line type="monotone" dataKey="this_week_avg_air" stroke="var(--cyan)" strokeWidth={2} dot={{ fill: "var(--cyan)", r: 3 }} />
+            <Line type="monotone" dataKey="last_week_avg_air" stroke="var(--text-dim)" strokeWidth={1.5} strokeDasharray="4 3" dot={{ fill: "var(--text-dim)", r: 2 }} />
           </LineChart>
         </ResponsiveContainer>
-      </ChartCard>
+      </ChartBox>
+
     </div>
   );
 }

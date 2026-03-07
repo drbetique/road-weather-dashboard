@@ -10,7 +10,7 @@ import { RiskPeriods } from "@/components/dashboard/RiskPeriods";
 import { HistoryTab } from "@/components/dashboard/HistoryTab";
 import { useNotifications } from "@/lib/useNotifications";
 import { translations } from "@/lib/translations";
-import type { Lang } from "@/lib/translations";
+import { useLang } from "@/components/providers/Providers";
 import {
   getDashboardSummary,
   getCurrentWeather,
@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("live");
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("sensors");
-  const [lang, setLang] = useState<Lang>("en");
+  const { lang, setLang } = useLang();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [readings, setReadings] = useState<WeatherReading[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -154,7 +154,7 @@ export default function DashboardPage() {
                 color: activeTab === tab ? "var(--cyan)" : "var(--text-dim)",
                 borderBottom: activeTab === tab ? "1px solid var(--cyan)" : "1px solid transparent",
               }}>
-                {tab === "live" ? `⚡ ${t.live}` : `📊 ${t.date_range}`}
+                {tab === "live" ? `⚡ ${t.live}` : `📊 ${t.history}`}
               </button>
             ))}
           </div>
