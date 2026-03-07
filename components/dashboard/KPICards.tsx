@@ -16,7 +16,10 @@ export function KPICards({ summary, loading, t }: Props) {
     : riskLevel >= 2 ? t.forecast_moderate
     : riskLevel >= 1 ? t.forecast_low
     : t.forecast_safe;
-  const riskColor = riskLevel >= 4 ? "var(--red)" : riskLevel >= 3 ? "var(--amber)" : riskLevel >= 2 ? "var(--yellow)" : "var(--green)";
+  const riskColor = riskLevel >= 4 ? "var(--red)"
+    : riskLevel >= 3 ? "var(--amber)"
+    : riskLevel >= 2 ? "var(--yellow)"
+    : "var(--green)";
 
   const cards = [
     {
@@ -34,7 +37,7 @@ export function KPICards({ summary, loading, t }: Props) {
       accent: "var(--amber)",
       trend: (summary?.stations_needing_treatment ?? 0) > 0
         ? `+${summary?.stations_needing_treatment}`
-        : t.all_roads_ok.split(" ").slice(0, 3).join(" "),
+        : t.urgency_NONE,
       trendUp: (summary?.stations_needing_treatment ?? 0) > 0,
     },
     {
@@ -46,7 +49,7 @@ export function KPICards({ summary, loading, t }: Props) {
       trendUp: (summary?.critical_stations ?? 0) > 0,
     },
     {
-      label: "Avg Road Temp",
+      label: t.road_temp,
       value: loading ? "—" : summary?.avg_road_temp !== undefined && summary.avg_road_temp !== null
         ? `${summary.avg_road_temp.toFixed(1)}°`
         : "—",

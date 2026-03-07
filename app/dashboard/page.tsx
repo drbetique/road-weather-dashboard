@@ -11,6 +11,7 @@ import { HistoryTab } from "@/components/dashboard/HistoryTab";
 import { useNotifications } from "@/lib/useNotifications";
 import { translations } from "@/lib/translations";
 import { useLang } from "@/components/providers/Providers";
+import type { Lang } from "@/lib/translations";
 import {
   getDashboardSummary,
   getCurrentWeather,
@@ -111,9 +112,8 @@ export default function DashboardPage() {
     </div>
   );
 
-  const criticalCount = recommendations.filter(r => r.urgency >= 4).length;
-  const roleLabel = user.role === "fi" ? t.role_admin
-    : user.role === "admin" ? t.role_admin
+  const criticalCount = recommendations.filter(r => Number(r.urgency) >= 4).length;
+  const roleLabel = user.role === "admin" ? t.role_admin
     : user.role === "operator" ? t.role_operator
     : t.role_viewer;
 
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               {/* LEFT */}
               <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", borderRight: "1px solid var(--border)" }}>
                 <div style={{ flex: 1, overflow: "auto" }}>
-                  <ConditionsTable readings={readings} loading={loading} role={(user.role as string)} t={t} />
+                  <ConditionsTable readings={readings} loading={loading} role={user.role as string} t={t} />
                 </div>
                 <div style={{ borderTop: "1px solid var(--border)", display: "grid", gridTemplateColumns: "1fr 1fr", flexShrink: 0, height: "220px" }}>
                   <div style={{ borderRight: "1px solid var(--border)" }}>
@@ -265,9 +265,7 @@ export default function DashboardPage() {
                   {sidebarTab === "sensors" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {readings.slice(0, 8).map((r, i) => (
-                        <div key={i} style={{
-                          background: "var(--bg3)", border: "1px solid var(--border)", padding: "10px 12px",
-                        }}>
+                        <div key={i} style={{ background: "var(--bg3)", border: "1px solid var(--border)", padding: "10px 12px" }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
                             <span style={{ fontSize: "10px", color: "var(--text-bright)", fontWeight: 700 }}>
                               {r.station_name}
@@ -309,27 +307,27 @@ export default function DashboardPage() {
 
                   {sidebarTab === "alerts" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      {recommendations.filter(r => r.urgency >= 3).length === 0 ? (
+                      {recommendations.filter(r => Number(r.urgency) >= 3).length === 0 ? (
                         <div style={{ padding: "24px", textAlign: "center", color: "var(--green)", fontSize: "10px" }}>
                           ✓ {t.all_roads_ok}
                         </div>
-                      ) : recommendations.filter(r => r.urgency >= 3).map((rec, i) => (
+                      ) : recommendations.filter(r => Number(r.urgency) >= 3).map((rec, i) => (
                         <div key={i} style={{
                           padding: "10px 12px", borderBottom: "1px solid var(--border)",
-                          borderLeft: `2px solid ${rec.urgency >= 4 ? "var(--red)" : "var(--amber)"}`,
-                          background: rec.urgency >= 4 ? "var(--red-dim)" : "var(--amber-dim)",
+                          borderLeft: `2px solid ${Number(rec.urgency) >= 4 ? "var(--red)" : "var(--amber)"}`,
+                          background: Number(rec.urgency) >= 4 ? "var(--red-dim)" : "var(--amber-dim)",
                         }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                            <span style={{ fontSize: "10px", fontWeight: 700, color: rec.urgency >= 4 ? "var(--red)" : "var(--amber)" }}>
+                            <span style={{ fontSize: "10px", fontWeight: 700, color: Number(rec.urgency) >= 4 ? "var(--red)" : "var(--amber)" }}>
                               ⚠ {rec.treatment_type?.replace(/_/g, " ").toUpperCase()}
                             </span>
                             <span style={{
                               fontSize: "8px", padding: "1px 5px", textTransform: "uppercase", letterSpacing: "0.1em",
-                              background: rec.urgency >= 4 ? "var(--red-dim)" : "var(--amber-dim)",
-                              color: rec.urgency >= 4 ? "var(--red)" : "var(--amber)",
-                              border: `1px solid ${rec.urgency >= 4 ? "var(--red)" : "var(--amber)"}`,
+                              background: Number(rec.urgency) >= 4 ? "var(--red-dim)" : "var(--amber-dim)",
+                              color: Number(rec.urgency) >= 4 ? "var(--red)" : "var(--amber)",
+                              border: `1px solid ${Number(rec.urgency) >= 4 ? "var(--red)" : "var(--amber)"}`,
                             }}>
-                              {rec.urgency >= 4 ? t.urgency_CRITICAL : t.urgency_URGENT}
+                              {Number(rec.urgency) >= 4 ? t.urgency_CRITICAL : t.urgency_URGENT}
                             </span>
                           </div>
                           <div style={{ fontSize: "9px", color: "var(--text-dim)" }}>📍 {rec.station_name}</div>
@@ -342,7 +340,7 @@ export default function DashboardPage() {
                   )}
 
                   {sidebarTab === "maintenance" && (
-                    <RecommendationsPanel recommendations={recommendations} loading={loading} role={(user.role as string)} t={t} compact />
+                    <RecommendationsPanel recommendations={recommendations} loading={loading} role={user.role as string} t={t} compact />
                   )}
                 </div>
 

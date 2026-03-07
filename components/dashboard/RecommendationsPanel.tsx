@@ -11,12 +11,12 @@ interface Props {
   compact?: boolean;
 }
 
-const urgencyConfig = (level: number, t: Translations) => {
+function urgencyConfig(level: number, t: Translations) {
   if (level >= 4) return { label: t.urgency_CRITICAL, color: "var(--red)", bg: "var(--red-dim)", border: "var(--red)" };
   if (level >= 3) return { label: t.urgency_URGENT, color: "var(--amber)", bg: "var(--amber-dim)", border: "var(--amber)" };
   if (level >= 2) return { label: t.urgency_STANDARD, color: "var(--yellow)", bg: "var(--amber-dim)", border: "var(--yellow)" };
   return { label: t.urgency_PREVENTIVE, color: "var(--cyan)", bg: "var(--cyan-dim)", border: "var(--cyan)" };
-};
+}
 
 const treatmentIcons: Record<string, string> = {
   salt_brine: "🧂",
@@ -26,7 +26,7 @@ const treatmentIcons: Record<string, string> = {
 };
 
 export function RecommendationsPanel({ recommendations, loading, role, t, compact }: Props) {
-  const sorted = [...recommendations].sort((a, b) => (b.urgency ?? 0) - (a.urgency ?? 0));
+  const sorted = [...recommendations].sort((a, b) => Number(b.urgency ?? 0) - Number(a.urgency ?? 0));
 
   if (loading) return (
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -59,7 +59,7 @@ export function RecommendationsPanel({ recommendations, loading, role, t, compac
 
       <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "4px" }}>
         {sorted.slice(0, compact ? 6 : 20).map((rec, i) => {
-          const c = urgencyConfig(rec.urgency ?? 1, t);
+          const c = urgencyConfig(Number(rec.urgency ?? 1), t);
           const icon = treatmentIcons[rec.treatment_type ?? ""] ?? "⚠️";
           return (
             <div key={i} style={{
