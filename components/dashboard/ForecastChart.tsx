@@ -13,8 +13,8 @@ interface Props {
 export function ForecastChart({ forecast, loading, t }: Props) {
   const data = forecast.map(p => ({
     time: new Date(p.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    temperature: p.temperature !== undefined ? Math.round(p.temperature * 10) / 10 : null,
-    dew_point: p.dew_point !== undefined ? Math.round((p.dew_point ?? 0) * 10) / 10 : null,
+    temperature: (p.temperature !== null && p.temperature !== undefined) ? Math.round(p.temperature * 10) / 10 : null,
+    dew_point: (p.dew_point !== null && p.dew_point !== undefined) ? Math.round((p.dew_point ?? 0) * 10) / 10 : null,
   }));
 
   const CustomTooltip = ({ active, payload, label }: any) => {
