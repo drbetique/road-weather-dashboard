@@ -11,7 +11,7 @@ interface RiskPeriodsProps {
   loading: boolean;
 }
 
-function riskLevelToInfo(level: number, t: typeof translations.en) {
+function riskLevelToInfo(level: number, t: typeof translations.en | typeof translations.fi) {
   if (level <= 1) return { label: t.risk_low, badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200", border: "border-yellow-400", bg: "bg-yellow-50 dark:bg-yellow-950" };
   if (level <= 3) return { label: t.risk_medium, badge: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200", border: "border-orange-400", bg: "bg-orange-50 dark:bg-orange-950" };
   return { label: t.risk_high, badge: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200", border: "border-red-500", bg: "bg-red-50 dark:bg-red-950" };

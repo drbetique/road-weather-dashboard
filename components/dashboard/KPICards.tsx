@@ -11,7 +11,7 @@ interface KPICardsProps {
   loading: boolean;
 }
 
-function forecastRiskToLabel(level: number, t: typeof translations.en) {
+function forecastRiskToLabel(level: number, t: typeof translations.en | typeof translations.fi) {
   if (level === 0) return { label: t.forecast_safe, color: "text-green-600 dark:text-green-400" };
   if (level <= 1) return { label: t.forecast_low, color: "text-green-500 dark:text-green-400" };
   if (level <= 2) return { label: t.forecast_moderate, color: "text-yellow-600 dark:text-yellow-400" };
