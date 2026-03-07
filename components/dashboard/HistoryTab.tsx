@@ -188,7 +188,7 @@ export function HistoryTab() {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
             <XAxis dataKey="date" {...axisStyle} />
             <YAxis {...axisStyle} unit="°" />
-            <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}°C`]} />
+            <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0}°C`]} />
             <Legend wrapperStyle={{ fontSize: "11px" }}
               formatter={(v) => <span style={{ color: "var(--text-secondary)" }}>{v === "avg_air" ? (lang === "fi" ? "Ilma" : "Air") : (lang === "fi" ? "Tie" : "Road")}</span>}
             />
@@ -247,7 +247,7 @@ export function HistoryTab() {
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
             <XAxis dataKey="day_of_week" {...axisStyle} />
             <YAxis {...axisStyle} unit="°" />
-            <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}°C`]} />
+            <Tooltip {...tooltipStyle} formatter={(v: number | undefined) => [`${v ?? 0}°C`]} />
             <Legend wrapperStyle={{ fontSize: "11px" }}
               formatter={(v) => (
                 <span style={{ color: "var(--text-secondary)" }}>
