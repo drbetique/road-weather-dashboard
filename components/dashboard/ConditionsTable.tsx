@@ -15,7 +15,7 @@ interface ConditionsTableProps {
   role: UserRole;
 }
 
-function frictionToStatus(friction: number | null, t: typeof translations.en) {
+function frictionToStatus(friction: number | null, t: typeof translations.en | typeof translations.fi) {
   if (friction === null) return { label: t.no_sensor , color: "var(--text-muted)", dot: "#475569", level: -1 };
   if (friction >= 0.6) return { label: t.road_good, color: "#34d399", dot: "#10b981", level: 0 };
   if (friction >= 0.45) return { label: t.road_watch, color: "#fbbf24", dot: "#f59e0b", level: 1 };
