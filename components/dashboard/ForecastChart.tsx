@@ -68,7 +68,7 @@ export function ForecastChart({ forecast, loading }: ForecastChartProps) {
                   borderRadius: "8px",
                   fontSize: "12px",
                 }}
-                formatter={(value: number | undefined, name: string) => [
+                formatter={(value: number | undefined, name: string  | undefined) => [
                   `${value ?? 0}°C`,
                   name === "temperature" ? t.temperature : t.dew_point,
                 ]}
