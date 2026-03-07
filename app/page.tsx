@@ -65,10 +65,10 @@ export default function DashboardPage() {
     async function getUser() {
       try {
         const res = await fetch("/api/auth/me");
-        if (!res.ok) { router.push("/"); return; }
+        if (!res.ok) { router.push("/login"); return; }
         const data = await res.json();
         setUser(data.user);
-      } catch { router.push("/"); }
+      } catch { router.push("/login"); }
     }
     getUser();
   }, [router]);
@@ -200,7 +200,7 @@ export default function DashboardPage() {
               <div style={{ fontSize: "8px", color: "var(--text-dim)", opacity: 0.6 }}>{roleLabel}</div>
             </div>
             <button
-              onClick={async () => { await fetch("/api/auth", { method: "DELETE" }); router.push("/"); }}
+              onClick={async () => { await fetch("/api/auth", { method: "DELETE" }); router.push("/login"); }}
               style={{
                 background: "none", border: "1px solid var(--border)", color: "var(--text-dim)",
                 padding: "3px 8px", fontSize: "9px", cursor: "pointer", letterSpacing: "0.1em",
