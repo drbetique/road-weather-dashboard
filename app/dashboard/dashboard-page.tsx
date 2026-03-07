@@ -98,8 +98,8 @@ export default function DashboardPage() {
   }
 
   const tabs: { id: Tab; label: string }[] = [
-    { id: "live", label: user.role === "fi" ? "Reaaliaikainen" : "Live View" },
-    { id: "history", label: user.role === "fi" ? "Historia" : "History" },
+    { id: "live", label: (user.role as string) === "fi" ? "Reaaliaikainen" : "Live View" },
+    { id: "history", label: (user.role as string) === "fi" ? "Historia" : "History" },
   ];
 
   return (
