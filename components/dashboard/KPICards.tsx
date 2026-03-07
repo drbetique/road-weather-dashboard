@@ -1,96 +1,102 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { useLang } from "@/components/providers/Providers";
-import { translations } from "@/lib/translations";
 import { DashboardSummary } from "@/types";
+import { Translations } from "@/lib/translations";
 
-interface KPICardsProps {
+interface Props {
   summary: DashboardSummary | null;
   loading: boolean;
+  t: Translations;
 }
 
-function forecastRiskToLabel(level: number, t: typeof translations.en | typeof translations.fi) {
-  if (level === 0) return { label: t.forecast_safe, color: "text-green-600 dark:text-green-400" };
-  if (level <= 1) return { label: t.forecast_low, color: "text-green-500 dark:text-green-400" };
-  if (level <= 2) return { label: t.forecast_moderate, color: "text-yellow-600 dark:text-yellow-400" };
-  if (level <= 3) return { label: t.forecast_high, color: "text-orange-600 dark:text-orange-400" };
-  return { label: t.forecast_critical, color: "text-red-600 dark:text-red-400" };
-}
-
-export function KPICards({ summary, loading }: KPICardsProps) {
-  const { lang } = useLang();
-  const t = translations[lang];
-
-  const riskInfo = summary
-    ? forecastRiskToLabel(summary.forecast_risk_level, t)
-    : null;
+export function KPICards({ summary, loading, t }: Props) {
+  const riskLevel = summary?.forecast_risk_level ?? 0;
+  const riskLabel = riskLevel >= 4 ? t.forecast_critical
+    : riskLevel >= 3 ? t.forecast_high
+    : riskLevel >= 2 ? t.forecast_moderate
+    : riskLevel >= 1 ? t.forecast_low
+    : t.forecast_safe;
+  const riskColor = riskLevel >= 4 ? "var(--red)" : riskLevel >= 3 ? "var(--amber)" : riskLevel >= 2 ? "var(--yellow)" : "var(--green)";
 
   const cards = [
     {
-      title: t.stations_monitored,
-      subtitle: t.stations_subtitle,
-      value: summary?.stations_count ?? "--",
-      icon: "📡",
-      color: "text-gray-800 dark:text-gray-100",
+      label: t.stations_monitored,
+      value: loading ? "—" : String(summary?.total_stations ?? 0),
+      sub: t.stations_subtitle,
+      accent: "var(--cyan)",
+      trend: "100% uptime",
+      trendUp: false,
     },
     {
-      title: t.treatment_needed,
-      subtitle: t.treatment_subtitle,
-      value: summary?.treatment_needed_count ?? "--",
-      icon: "🧂",
-      color: "text-orange-600 dark:text-orange-400",
+      label: t.treatment_needed,
+      value: loading ? "—" : String(summary?.stations_needing_treatment ?? 0),
+      sub: t.treatment_subtitle,
+      accent: "var(--amber)",
+      trend: (summary?.stations_needing_treatment ?? 0) > 0
+        ? `+${summary?.stations_needing_treatment}`
+        : t.all_roads_ok.split(" ").slice(0, 3).join(" "),
+      trendUp: (summary?.stations_needing_treatment ?? 0) > 0,
     },
     {
-      title: t.act_now,
-      subtitle: t.act_now_subtitle,
-      value: summary?.critical_count ?? "--",
-      icon: "🚨",
-      color: "text-red-600 dark:text-red-400",
+      label: t.act_now,
+      value: loading ? "—" : String(summary?.critical_stations ?? 0),
+      sub: t.act_now_subtitle,
+      accent: (summary?.critical_stations ?? 0) > 0 ? "var(--red)" : "var(--green)",
+      trend: (summary?.critical_stations ?? 0) > 0 ? t.urgency_CRITICAL : t.urgency_NONE,
+      trendUp: (summary?.critical_stations ?? 0) > 0,
     },
     {
-      title: t.tonight_conditions,
-      subtitle: t.forecast_subtitle,
-      value: riskInfo?.label ?? "--",
-      icon: "🌡️",
-      color: riskInfo?.color ?? "text-blue-600 dark:text-blue-400",
-      isText: true,
+      label: "Avg Road Temp",
+      value: loading ? "—" : summary?.avg_road_temp !== undefined && summary.avg_road_temp !== null
+        ? `${summary.avg_road_temp.toFixed(1)}°`
+        : "—",
+      sub: "°C surface avg",
+      accent: "var(--cyan)",
+      trend: (summary?.avg_road_temp ?? 0) < 0 ? t.road_dangerous : t.road_good,
+      trendUp: (summary?.avg_road_temp ?? 0) < 0,
+    },
+    {
+      label: t.tonight_conditions,
+      value: loading ? "—" : riskLabel,
+      sub: `${t.forecast_subtitle} · ${riskLevel}/5`,
+      accent: riskColor,
+      trend: riskLevel >= 3 ? t.forecast_high : t.forecast_safe,
+      trendUp: riskLevel >= 3,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div style={{
+      display: "grid", gridTemplateColumns: "repeat(5, 1fr)",
+      borderBottom: "1px solid var(--border)", flexShrink: 0,
+    }}>
       {cards.map((card, i) => (
-        <motion.div
-          key={card.title}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.1, duration: 0.4 }}
-        >
-          <Card className="border shadow-sm hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-muted-foreground font-medium truncate">
-                    {card.title}
-                  </p>
-                  {loading ? (
-                    <div className="h-8 w-16 bg-muted animate-pulse rounded mt-1" />
-                  ) : (
-                    <p className={`text-3xl font-bold mt-1 ${card.color} ${card.isText ? "text-xl" : ""}`}>
-                      {card.value}
-                    </p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                    {card.subtitle}
-                  </p>
-                </div>
-                <span className="text-3xl ml-2">{card.icon}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <div key={i} style={{
+          padding: "14px 16px",
+          borderRight: i < cards.length - 1 ? "1px solid var(--border)" : "none",
+          position: "relative", overflow: "hidden",
+        }}>
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "2px",
+            background: card.accent, opacity: loading ? 0.3 : 1,
+          }} />
+          <div style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "6px" }}>
+            {card.label}
+          </div>
+          <div style={{
+            fontFamily: "Syne, sans-serif",
+            fontSize: card.value.length > 6 ? "16px" : "28px",
+            fontWeight: 800,
+            color: loading ? "var(--text-dim)" : card.accent,
+            lineHeight: 1, marginBottom: "4px", transition: "color 0.3s",
+          }}>
+            {loading ? <span style={{ animation: "blink 1.5s infinite", display: "inline-block" }}>——</span> : card.value}
+          </div>
+          <div style={{ fontSize: "9px", color: "var(--text-dim)", marginBottom: "4px" }}>{card.sub}</div>
+          <div style={{ fontSize: "9px", color: card.trendUp ? "var(--red)" : "var(--green)", marginTop: "2px" }}>
+            {card.trendUp ? "▲" : "▼"} {card.trend}
+          </div>
+        </div>
       ))}
     </div>
   );

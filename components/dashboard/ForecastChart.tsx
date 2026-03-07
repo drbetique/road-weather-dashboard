@@ -1,111 +1,82 @@
 "use client";
 
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ReferenceLine,
-  ResponsiveContainer,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useLang } from "@/components/providers/Providers";
-import { translations } from "@/lib/translations";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { ForecastPoint } from "@/types";
+import { Translations } from "@/lib/translations";
 
-interface ForecastChartProps {
+interface Props {
   forecast: ForecastPoint[];
   loading: boolean;
+  t: Translations;
 }
 
-export function ForecastChart({ forecast, loading }: ForecastChartProps) {
-  const { lang } = useLang();
-  const t = translations[lang];
-
-  const data = forecast.map((f) => ({
-    time: new Date(f.timestamp).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-    temperature: f.temperature,
-    dew_point: f.dew_point,
+export function ForecastChart({ forecast, loading, t }: Props) {
+  const data = forecast.map(p => ({
+    time: new Date(p.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    temperature: p.temperature !== undefined ? Math.round(p.temperature * 10) / 10 : null,
+    dew_point: p.dew_point !== undefined ? Math.round((p.dew_point ?? 0) * 10) / 10 : null,
   }));
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{
+        background: "var(--bg2)", border: "1px solid var(--border2)",
+        padding: "8px 12px", fontFamily: "Space Mono, monospace",
+      }}>
+        <div style={{ fontSize: "9px", color: "var(--text-dim)", marginBottom: "4px" }}>{label}</div>
+        {payload.map((p: any, i: number) => (
+          <div key={i} style={{ fontSize: "11px", color: p.color, marginBottom: "2px" }}>
+            {p.name}: {p.value}°C
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <span>📈</span> {t.forecast_24h}
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">{t.chart_subtitle}</p>
-      </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{
+        padding: "8px 14px", borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
+      }}>
+        <span style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+          {t.forecast_24h}
+        </span>
+        <span style={{ fontSize: "9px", color: "var(--text-dim)" }}>{t.chart_subtitle}</span>
+      </div>
+
+      {loading ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "0.15em", animation: "blink 1.5s infinite" }}>
+            {t.loading.toUpperCase()}
+          </span>
+        </div>
+      ) : (
+        <div style={{ flex: 1, padding: "8px 4px 4px" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <XAxis
                 dataKey="time"
-                tick={{ fontSize: 11 }}
+                tick={{ fill: "var(--text-dim)", fontSize: 8, fontFamily: "Space Mono" }}
+                tickLine={false}
+                axisLine={{ stroke: "var(--border)" }}
                 interval="preserveStartEnd"
-                className="fill-muted-foreground"
               />
               <YAxis
-                tick={{ fontSize: 11 }}
-                unit="°"
-                className="fill-muted-foreground"
+                tick={{ fill: "var(--text-dim)", fontSize: 8, fontFamily: "Space Mono" }}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={v => `${v}°`}
               />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-                formatter={(value: number | undefined, name: string  | undefined) => [
-                  `${value ?? 0}°C`,
-                  name === "temperature" ? t.temperature : t.dew_point,
-                ]}
-              />
-              <Legend
-                formatter={(value) =>
-                  value === "temperature" ? t.temperature : t.dew_point
-                }
-                wrapperStyle={{ fontSize: "12px" }}
-              />
-              <ReferenceLine
-                y={0}
-                stroke="#ef4444"
-                strokeDasharray="4 2"
-                label={{ value: "0°C", fontSize: 10, fill: "#ef4444" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="temperature"
-                stroke="#ef4444"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="dew_point"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                activeDot={{ r: 4 }}
-              />
+              <Tooltip content={<CustomTooltip />} />
+              <ReferenceLine y={0} stroke="var(--red)" strokeDasharray="4 2" strokeWidth={1} opacity={0.5} label={{ value: t.freezing_point, fill: "var(--red)", fontSize: 8 }} />
+              <Line type="monotone" dataKey="temperature" stroke="var(--cyan)" strokeWidth={1.5} dot={false} name={t.temperature} connectNulls />
+              <Line type="monotone" dataKey="dew_point" stroke="var(--text-dim)" strokeWidth={1} dot={false} strokeDasharray="3 2" name={t.dew_point} connectNulls />
             </LineChart>
           </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 }

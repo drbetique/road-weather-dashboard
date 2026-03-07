@@ -1,105 +1,92 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useLang } from "@/components/providers/Providers";
-import { translations } from "@/lib/translations";
-import { Recommendation, UserRole } from "@/types";
+import { Recommendation } from "@/types";
+import { Translations } from "@/lib/translations";
 
-interface RecommendationsPanelProps {
+interface Props {
   recommendations: Recommendation[];
   loading: boolean;
-  role: UserRole;
+  role: string;
+  t: Translations;
+  compact?: boolean;
 }
 
-const urgencyColors: Record<string, string> = {
-  NONE: "bg-green-500",
-  MONITOR: "bg-blue-500",
-  PREVENTIVE: "bg-yellow-500",
-  STANDARD: "bg-orange-500",
-  URGENT: "bg-red-500",
-  CRITICAL: "bg-red-700",
+const urgencyConfig = (level: number, t: Translations) => {
+  if (level >= 4) return { label: t.urgency_CRITICAL, color: "var(--red)", bg: "var(--red-dim)", border: "var(--red)" };
+  if (level >= 3) return { label: t.urgency_URGENT, color: "var(--amber)", bg: "var(--amber-dim)", border: "var(--amber)" };
+  if (level >= 2) return { label: t.urgency_STANDARD, color: "var(--yellow)", bg: "var(--amber-dim)", border: "var(--yellow)" };
+  return { label: t.urgency_PREVENTIVE, color: "var(--cyan)", bg: "var(--cyan-dim)", border: "var(--cyan)" };
 };
 
-export function RecommendationsPanel({
-  recommendations,
-  loading,
-  role,
-}: RecommendationsPanelProps) {
-  const { lang } = useLang();
-  const t = translations[lang];
+const treatmentIcons: Record<string, string> = {
+  salt_brine: "🧂",
+  anti_ice: "❄️",
+  plow: "🚛",
+  monitor: "👁️",
+};
 
-  function confidenceLabel(c: number) {
-    if (c >= 0.8) return t.confidence_high;
-    if (c >= 0.5) return t.confidence_medium;
-    return t.confidence_low;
-  }
+export function RecommendationsPanel({ recommendations, loading, role, t, compact }: Props) {
+  const sorted = [...recommendations].sort((a, b) => (b.urgency ?? 0) - (a.urgency ?? 0));
 
-  function translateUrgency(u: string) {
-    return (t as Record<string, string>)[`urgency_${u}`] || u;
-  }
+  if (loading) return (
+    <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} style={{ height: "60px", background: "var(--bg3)", border: "1px solid var(--border)", animation: "blink 1.5s infinite" }} />
+      ))}
+    </div>
+  );
 
-  function translateTreatment(tr: string) {
-    return (t as Record<string, string>)[`treatment_${tr}`] || tr;
-  }
+  if (sorted.length === 0) return (
+    <div style={{ padding: "32px", textAlign: "center" }}>
+      <div style={{ fontSize: "24px", marginBottom: "8px" }}>✓</div>
+      <div style={{ fontSize: "10px", color: "var(--green)", letterSpacing: "0.1em" }}>{t.all_roads_ok.toUpperCase()}</div>
+      <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "4px" }}>{t.treatment_none}</div>
+    </div>
+  );
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <span>📋</span> {t.action_required}
-        </CardTitle>
-        <p className="text-xs text-muted-foreground">{t.rec_subtitle}</p>
-      </CardHeader>
-      <CardContent className="overflow-y-auto max-h-96 space-y-2 pr-2">
-        {loading ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full" />
-          ))
-        ) : recommendations.length === 0 ? (
-          <div className="text-center py-6 text-green-600 dark:text-green-400">
-            <span className="text-3xl block mb-2">✅</span>
-            <p className="text-sm font-medium">{t.all_roads_ok}</p>
-          </div>
-        ) : (
-          recommendations.map((rec) => (
-            <div
-              key={rec.station_id}
-              className={`border rounded-lg p-3 transition-colors ${
-                rec.urgency_level >= 4
-                  ? "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"
-                  : "border-border bg-card"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-semibold text-sm truncate pr-2">
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {!compact && (
+        <div style={{
+          padding: "10px 14px", borderBottom: "1px solid var(--border)",
+          fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+        }}>
+          <span>{t.action_required}</span>
+          <span style={{ color: "var(--amber)" }}>{sorted.length}</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "4px" }}>
+        {sorted.slice(0, compact ? 6 : 20).map((rec, i) => {
+          const c = urgencyConfig(rec.urgency ?? 1, t);
+          const icon = treatmentIcons[rec.treatment_type ?? ""] ?? "⚠️";
+          return (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: "8px",
+              padding: "8px 10px", background: "var(--bg3)",
+              border: "1px solid var(--border)", borderLeft: `2px solid ${c.border}`,
+            }}>
+              <span style={{ fontSize: "16px", flexShrink: 0 }}>{icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: "10px", color: "var(--text-bright)", fontWeight: 700, marginBottom: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {rec.station_name}
-                </span>
-                <span
-                  className={`text-xs text-white px-2 py-0.5 rounded-full shrink-0 ${
-                    urgencyColors[rec.urgency] || "bg-gray-500"
-                  }`}
-                >
-                  {translateUrgency(rec.urgency)}
-                </span>
+                </div>
+                <div style={{ fontSize: "9px", color: "var(--text-dim)" }}>
+                  {rec.amount_g_m2 ? `${rec.amount_g_m2} g/m²` : ""} {rec.treatment_type?.replace(/_/g, " ")}
+                </div>
               </div>
-              <p className="text-sm font-medium text-foreground">
-                {translateTreatment(rec.treatment_type)}
-                {rec.salt_amount_gm2 && (
-                  <span className="text-muted-foreground font-normal ml-1">
-                    ({rec.salt_amount_gm2} g/m²)
-                  </span>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {confidenceLabel(rec.confidence)} &nbsp;·&nbsp; {t.recheck}{" "}
-                {rec.next_check_minutes} {t.minutes}
-              </p>
+              <span style={{
+                fontSize: "8px", padding: "2px 6px", textTransform: "uppercase",
+                letterSpacing: "0.08em", fontWeight: 700, flexShrink: 0,
+                background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+              }}>
+                {c.label}
+              </span>
             </div>
-          ))
-        )}
-      </CardContent>
-    </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 }
