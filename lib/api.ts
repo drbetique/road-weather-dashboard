@@ -12,6 +12,9 @@ const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 async function fetchJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
+    headers: {
+      "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
+    },
   });
   if (!res.ok) throw new Error(`API error: ${res.status} ${path}`);
   return res.json();
