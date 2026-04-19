@@ -26,7 +26,9 @@ const treatmentIcons: Record<string, string> = {
 };
 
 export function RecommendationsPanel({ recommendations, loading, role, t, compact }: Props) {
-  const sorted = [...recommendations].sort((a, b) => (b.urgency_level ?? 0) - (a.urgency_level ?? 0));
+  const sorted = [...recommendations]
+  .filter((r) => (r.urgency_level ?? 0) >= 1)
+  .sort((a, b) => (b.urgency_level ?? 0) - (a.urgency_level ?? 0));
 
   if (loading) return (
     <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
