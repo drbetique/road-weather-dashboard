@@ -18,38 +18,6 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-/**
- * Mock credentials for local development and testing only.
- *
- * These are placeholders with no connection to any real person or account.
- * Passwords are stored in plaintext and shipped in the repository, so this
- * store must be replaced with a real user database (with hashed passwords)
- * before this application handles anything sensitive.
- */
-export const USERS: (User & { password: string })[] = [
-  {
-    id: "1",
-    name: "Test Admin",
-    email: "admin@example.com",
-    role: "admin",
-    password: "dev-admin-password",
-  },
-  {
-    id: "2",
-    name: "Test Operator",
-    email: "operator@example.com",
-    role: "operator",
-    password: "dev-operator-password",
-  },
-  {
-    id: "3",
-    name: "Test Viewer",
-    email: "viewer@example.com",
-    role: "viewer",
-    password: "dev-viewer-password",
-  },
-];
-
 export async function signToken(user: User): Promise<string> {
   return new SignJWT({
     id: user.id,

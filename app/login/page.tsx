@@ -63,6 +63,12 @@ export default function LoginPage() {
         </button>
         <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
           <div style={{ fontSize: "8px", color: "var(--text-dim)", letterSpacing: "0.1em", marginBottom: "6px" }}>DEMO ACCOUNTS</div>
+          {/*
+            Demo shortcuts. These are FAKE test accounts, published here on
+            purpose so reviewers can sign in; see lib/users.ts. They guard
+            nothing real. Any secret-scanner hit here is a false positive.
+          */}
+          {/* gitleaks:allow  detect-secrets:allow */}
           {[
             { label: "Admin", email: "admin@example.com", pw: "dev-admin-password" },
             { label: "Operator", email: "operator@example.com", pw: "dev-operator-password" },

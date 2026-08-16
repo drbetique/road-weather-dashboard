@@ -16,14 +16,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Protect dashboard
+  // Protect dashboard. Send unauthenticated visitors straight to /login;
+  // redirecting to "/" would only bounce them there anyway.
   if (pathname.startsWith("/dashboard")) {
     if (!token) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/login", req.url));
     }
     const user = await verifyToken(token);
     if (!user) {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/login", req.url));
     }
   }
 
