@@ -107,18 +107,29 @@ export function DashboardNav({
           })}
         </div>
 
+        {/*
+          Feed health, not transport. The dashboard always polls, so labelling
+          the failure state "POLLING" described the normal mechanism as though
+          it were the fault. Stale means the last refresh did not come back,
+          and it wears a warning colour so it does not read as ordinary
+          dimmed text.
+        */}
         <div
+          role="status"
+          aria-live="polite"
           className={`flex items-center gap-1.5 text-[9px] ${
-            isLive ? "text-urgency-monitor" : "text-ink-dim"
+            isLive ? "text-urgency-monitor" : "text-urgency-standard"
           }`}
         >
           <span
             aria-hidden="true"
             className={`size-[5px] rounded-full ${
-              isLive ? "animate-pulse bg-urgency-monitor" : "bg-ink-dim"
+              isLive
+                ? "animate-pulse bg-urgency-monitor"
+                : "bg-urgency-standard"
             }`}
           />
-          {isLive ? t.live.toUpperCase() : "POLLING"}
+          {(isLive ? t.live : t.status_stale).toUpperCase()}
         </div>
 
         {criticalCount > 0 && (
