@@ -65,6 +65,12 @@ export function subscribeSummary(
   let cancelled = false;
 
   const tick = async () => {
+    // Skip while the tab is hidden. Browsers throttle timers in background
+    // tabs anyway, and a request nobody will see just costs battery and
+    // free-tier quota. useLiveRefresh fires a fresh fetch on return.
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
     try {
       const data = await getDashboardSummary();
       if (!cancelled) onMessage(data);

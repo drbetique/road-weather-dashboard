@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -18,6 +18,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLang } from "@/components/providers/Providers";
 import { API_BASE } from "@/lib/api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { CHART_INK, SERIES, URGENCY, type UrgencyName } from "@/lib/theme";
 
 /* -------------------------------------------------------------------------
@@ -179,8 +180,8 @@ export function HistoryTab() {
     setApplied({ start: startDate, end: endDate });
   }
 
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
+    {
       setLoading(true);
       setError(null);
       try {
@@ -247,8 +248,16 @@ export function HistoryTab() {
         setLoading(false);
       }
     }
-    void load();
   }, [applied, dayCount]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // History only changes when a collection run lands, so a slower cadence is
+  // enough; the value is refreshing on return to the tab rather than showing
+  // yesterday's chart.
+  useLiveRefresh(load, 300_000);
 
   const hasData = tempHistory.some((d) => d.avg_air !== null);
 

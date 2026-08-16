@@ -20,6 +20,7 @@ import {
 } from "@/lib/api";
 import { URGENT_LEVEL } from "@/lib/theme";
 import { translations } from "@/lib/translations";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { useNotifications } from "@/lib/useNotifications";
 import type {
   DashboardSummary,
@@ -100,10 +101,10 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // First load, plus the lightweight summary poll.
   useEffect(() => {
     if (!user) return;
     void fetchData();
-    const interval = setInterval(() => void fetchData(), REFRESH_MS);
     const unsubscribe = subscribeSummary(
       (data) => {
         setSummary(data);
@@ -112,11 +113,13 @@ export default function DashboardPage() {
       },
       () => setIsLive(false)
     );
-    return () => {
-      clearInterval(interval);
-      unsubscribe();
-    };
+    return unsubscribe;
   }, [user, fetchData]);
+
+  // Full refresh on a timer, and immediately whenever the user comes back to
+  // the tab. Without the second half, a phone that has been locked shows
+  // whatever was on screen when it was locked until the page is reloaded.
+  useLiveRefresh(fetchData, REFRESH_MS, Boolean(user));
 
   const criticalCount = useMemo(
     () =>
