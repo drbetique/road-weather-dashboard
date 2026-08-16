@@ -13,7 +13,7 @@ import { API_BASE } from "@/lib/api";
 
 async function fetchJSON(path: string) {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error(`${res.status} ${path}`);
   return res.json();
 }
 
@@ -88,6 +88,7 @@ export function HistoryTab() {
   const [riskHistory, setRiskHistory] = useState<any[]>([]);
   const [comparison, setComparison] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   function applyPreset(d: number) {
     setPreset(d);
@@ -108,40 +109,49 @@ export function HistoryTab() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const [temp, treat, risk, comp] = await Promise.all([
-        fetchJSON(`/weather/history?days=${dayCount}`),
-        fetchJSON(`/treatments/history?days=${dayCount}`),
-        fetchJSON(`/risks/history?days=${dayCount}`),
-        fetchJSON(`/weather/compare`),
-      ]);
+      setError(null);
+      try {
+        const range = `days=${dayCount}&start=${applied.start}&end=${applied.end}`;
+        const [temp, treat, risk, comp] = await Promise.all([
+          fetchJSON(`/weather/history?${range}`),
+          fetchJSON(`/treatments/history?${range}`),
+          fetchJSON(`/risks/history?${range}`),
+          fetchJSON(`/weather/compare`),
+        ]);
 
-      const tempByDate: Record<string, any> = {};
-      for (const row of temp) {
-        const d = row.date;
-        if (!tempByDate[d]) tempByDate[d] = { date: d, count: 0, air: 0, road: 0 };
-        if (row.avg_air_temp !== null) { tempByDate[d].air += row.avg_air_temp; tempByDate[d].count++; }
-        if (row.avg_road_temp !== null) tempByDate[d].road += row.avg_road_temp;
+          const tempByDate: Record<string, any> = {};
+        for (const row of temp) {
+          const d = row.date;
+          if (!tempByDate[d]) tempByDate[d] = { date: d, count: 0, air: 0, road: 0 };
+          if (row.avg_air_temp !== null) { tempByDate[d].air += row.avg_air_temp; tempByDate[d].count++; }
+          if (row.avg_road_temp !== null) tempByDate[d].road += row.avg_road_temp;
+        }
+        const tempData = Object.values(tempByDate)
+          .map((d: any) => ({
+            date: d.date.slice(5),
+            avg_air: d.count > 0 ? +(d.air / d.count).toFixed(1) : null,
+            avg_road: d.count > 0 ? +(d.road / d.count).toFixed(1) : null,
+          }))
+          .reverse();
+
+        const treatByDate: Record<string, any> = {};
+        for (const row of treat) {
+          const d = row.date;
+          if (!treatByDate[d]) treatByDate[d] = { date: d.slice(5) };
+          treatByDate[d][row.urgency_name] = (treatByDate[d][row.urgency_name] || 0) + Number(row.count);
+        }
+
+        setTempHistory(tempData);
+        setTreatHistory(Object.values(treatByDate).reverse());
+        setRiskHistory([...risk].reverse().map((r: any) => ({ ...r, date: r.date.slice(5) })));
+        setComparison(comp);
+      } catch (e) {
+        console.error("History load failed:", e);
+        setError(e instanceof Error ? e.message : "Request failed");
+        setTempHistory([]); setTreatHistory([]); setRiskHistory([]); setComparison([]);
+      } finally {
+        setLoading(false);
       }
-      const tempData = Object.values(tempByDate)
-        .map((d: any) => ({
-          date: d.date.slice(5),
-          avg_air: d.count > 0 ? +(d.air / d.count).toFixed(1) : null,
-          avg_road: d.count > 0 ? +(d.road / d.count).toFixed(1) : null,
-        }))
-        .reverse();
-
-      const treatByDate: Record<string, any> = {};
-      for (const row of treat) {
-        const d = row.date;
-        if (!treatByDate[d]) treatByDate[d] = { date: d.slice(5) };
-        treatByDate[d][row.urgency_name] = (treatByDate[d][row.urgency_name] || 0) + Number(row.count);
-      }
-
-      setTempHistory(tempData);
-      setTreatHistory(Object.values(treatByDate).reverse());
-      setRiskHistory([...risk].reverse().map((r: any) => ({ ...r, date: r.date.slice(5) })));
-      setComparison(comp);
-      setLoading(false);
     }
     load();
   }, [applied, dayCount]);
@@ -228,8 +238,24 @@ export function HistoryTab() {
         </div>
       </div>
 
+      {/* LOAD ERROR - distinct from "no data yet" so a broken backend is visible */}
+      {!loading && error && (
+        <div style={{
+          background: "var(--bg2)", border: "1px solid var(--red)",
+          padding: "24px", textAlign: "center",
+        }}>
+          <div style={{ fontSize: "22px", marginBottom: "8px" }}>⚠️</div>
+          <div style={{ fontSize: "11px", color: "var(--red)", letterSpacing: "0.1em" }}>
+            {fi ? "HISTORIAN LATAUS EPÄONNISTUI" : "COULD NOT LOAD HISTORY"}
+          </div>
+          <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "6px", opacity: 0.7 }}>
+            {error}
+          </div>
+        </div>
+      )}
+
       {/* NO DATA */}
-      {!loading && !hasData && (
+      {!loading && !error && !hasData && (
         <div style={{
           background: "var(--bg2)", border: "1px solid var(--border)",
           padding: "40px", textAlign: "center",

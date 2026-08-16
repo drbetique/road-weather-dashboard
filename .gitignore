@@ -2,3 +2,6 @@
 .next/
 .env.local
 *.pyc
+
+# typescript incremental build info
+*.tsbuildinfo
