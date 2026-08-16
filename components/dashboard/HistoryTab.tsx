@@ -9,8 +9,7 @@ import {
   Legend, ResponsiveContainer,
 } from "recharts";
 import { useLang } from "@/components/providers/Providers";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+import { API_BASE } from "@/lib/api";
 
 async function fetchJSON(path: string) {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });

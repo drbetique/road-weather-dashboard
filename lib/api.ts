@@ -6,16 +6,16 @@ import {
   MapData,
 } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+/**
+ * All backend traffic goes through the same-origin Next.js proxy at
+ * /api/proxy/*, which injects the backend API key server-side. No backend URL
+ * or credential is exposed to the browser, so there is nothing to configure
+ * with NEXT_PUBLIC_ here.
+ */
+export const API_BASE = "/api/proxy";
 
 async function fetchJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    cache: "no-store",
-    headers: {
-      "X-API-Key": process.env.NEXT_PUBLIC_API_KEY || "",
-    },
-  });
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
   if (!res.ok) throw new Error(`API error: ${res.status} ${path}`);
   return res.json();
 }
@@ -44,26 +44,42 @@ export async function getMapData(): Promise<MapData> {
   return fetchJSON<MapData>("/map/stations");
 }
 
-export function createWebSocket(
+/**
+ * Live dashboard updates.
+ *
+ * This replaces the previous WebSocket connection. Vercel's serverless
+ * functions cannot hold a WebSocket open, so the browser would have had to
+ * reach Render directly, bypassing the proxy and exposing the API key. Render
+ * free instances also sleep after ~15 minutes idle, which drops the socket.
+ * Polling through the proxy is resilient to both.
+ *
+ * Returns an unsubscribe function.
+ */
+export function subscribeSummary(
   onMessage: (data: DashboardSummary) => void,
-  onError?: () => void
-): WebSocket | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const ws = new WebSocket(`${WS_BASE}/ws`);
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        onMessage(data);
-      } catch {
-        // ignore parse errors
-      }
-    };
-    ws.onerror = () => onError?.();
-    return ws;
-  } catch {
-    return null;
-  }
+  onError?: () => void,
+  intervalMs = 30_000
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  let cancelled = false;
+
+  const tick = async () => {
+    try {
+      const data = await getDashboardSummary();
+      if (!cancelled) onMessage(data);
+    } catch {
+      if (!cancelled) onError?.();
+    }
+  };
+
+  void tick();
+  const id = setInterval(tick, intervalMs);
+
+  return () => {
+    cancelled = true;
+    clearInterval(id);
+  };
 }
 
 export function exportToCSV(readings: WeatherReading[], filename: string) {

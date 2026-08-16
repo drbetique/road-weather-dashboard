@@ -1,11 +1,31 @@
 import { SignJWT, jwtVerify } from "jose";
 import { User, UserRole } from "@/types";
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "development-only-secret"
-);
+/**
+ * JWT signing secret. Must be supplied via the JWT_SECRET environment
+ * variable -- there is deliberately no fallback. The previous hardcoded
+ * default was committed to the repository, which let anyone forge a valid
+ * admin session token.
+ */
+function getSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error(
+      "JWT_SECRET is not set. Generate one with " +
+        "`openssl rand -base64 48` and add it to the Vercel project."
+    );
+  }
+  return new TextEncoder().encode(secret);
+}
 
-// Static user store - in production this would be a database
+/**
+ * Mock credentials for local development and testing only.
+ *
+ * These are placeholders with no connection to any real person or account.
+ * Passwords are stored in plaintext and shipped in the repository, so this
+ * store must be replaced with a real user database (with hashed passwords)
+ * before this application handles anything sensitive.
+ */
 export const USERS: (User & { password: string })[] = [
   {
     id: "1",
@@ -39,12 +59,12 @@ export async function signToken(user: User): Promise<string> {
   })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("8h")
-    .sign(SECRET);
+    .sign(getSecret());
 }
 
 export async function verifyToken(token: string): Promise<User | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, getSecret());
     return {
       id: payload.id as string,
       name: payload.name as string,

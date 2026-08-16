@@ -17,7 +17,7 @@ import {
   getCurrentWeather,
   getRecommendations,
   getForecast,
-  createWebSocket,
+  subscribeSummary,
 } from "@/lib/api";
 import {
   DashboardSummary,
@@ -97,11 +97,11 @@ export default function DashboardPage() {
     if (!user) return;
     fetchData();
     const interval = setInterval(fetchData, 60000);
-    const ws = createWebSocket(
+    const unsubscribe = subscribeSummary(
       (data) => { setSummary(data); setIsLive(true); setLastUpdated(new Date().toLocaleTimeString()); },
       () => setIsLive(false)
     );
-    return () => { clearInterval(interval); ws?.close(); };
+    return () => { clearInterval(interval); unsubscribe(); };
   }, [user, fetchData]);
 
   if (!user) return (
