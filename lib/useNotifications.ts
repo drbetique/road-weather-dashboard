@@ -3,17 +3,27 @@
 import { useEffect, useRef, useState } from "react";
 import { DashboardSummary } from "@/types";
 
+/** Reads the current browser grant. Returns "default" during server render. */
+function readPermission(): NotificationPermission {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "default";
+  }
+  return Notification.permission;
+}
+
 export function useNotifications(summary: DashboardSummary | null) {
-  const [permission, setPermission] = useState<NotificationPermission>("default");
+  // Initialised lazily rather than assigned inside an effect: a synchronous
+  // setState in an effect body triggers a second render pass on every mount.
+  const [permission, setPermission] =
+    useState<NotificationPermission>(readPermission);
   const lastCriticalCount = useRef<number>(0);
   const lastPriorityStation = useRef<string | null>(null);
 
-  // Request permission on mount
+  // Only the prompt needs an effect; its result arrives asynchronously.
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    setPermission(Notification.permission);
     if (Notification.permission === "default") {
-      Notification.requestPermission().then(setPermission);
+      void Notification.requestPermission().then(setPermission);
     }
   }, []);
 

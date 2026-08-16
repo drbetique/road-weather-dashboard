@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sun, Moon, LogOut, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/components/providers/Providers";
 import { translations } from "@/lib/translations";
 import { User } from "@/types";

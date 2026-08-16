@@ -3,6 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const FIELD =
+  "w-full border border-line bg-surface-3 px-3 py-2.5 text-[11px] text-ink-bright outline-none placeholder:text-ink-dim focus-visible:border-accent";
+const FIELD_LABEL =
+  "mb-1.5 text-[9px] uppercase tracking-[0.15em] text-ink-dim";
+
+/**
+ * Demo shortcuts. These are FAKE test accounts, published here on purpose so
+ * reviewers can sign in; see lib/users.ts. They guard nothing real. Any
+ * secret-scanner hit here is a false positive.
+ */
+/* gitleaks:allow  detect-secrets:allow */
+const DEMO_ACCOUNTS = [
+  { label: "Admin", email: "admin@example.com", pw: "dev-admin-password" },
+  { label: "Operator", email: "operator@example.com", pw: "dev-operator-password" },
+  { label: "Viewer", email: "viewer@example.com", pw: "dev-viewer-password" },
+] as const;
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -20,7 +37,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
-        const data = await res.json();
+        const data: { error?: string } = await res.json();
         setError(data.error ?? "Login failed");
         setLoading(false);
         return;
@@ -33,54 +50,90 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Space Mono, monospace" }}>
-      <div style={{ width: "360px", border: "1px solid var(--border)", background: "var(--bg2)", padding: "32px" }}>
-        <div style={{ marginBottom: "28px" }}>
-          <div style={{ fontSize: "9px", color: "var(--cyan)", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "6px" }}>ROAD WEATHER SYSTEM</div>
-          <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-bright)", letterSpacing: "0.05em" }}>COMMAND CENTER</div>
-          <div style={{ fontSize: "9px", color: "var(--text-dim)", marginTop: "4px", letterSpacing: "0.1em" }}>AUTHORIZED ACCESS ONLY</div>
+    <div className="flex min-h-screen items-center justify-center bg-surface p-4">
+      <main className="w-full max-w-90 border border-line bg-surface-2 p-6 sm:p-8">
+        <header className="mb-7">
+          <p className="mb-1.5 text-[9px] uppercase tracking-[0.2em] text-accent">
+            Road Weather System
+          </p>
+          <h1 className="text-lg font-extrabold tracking-[0.05em] text-ink-bright">
+            COMMAND CENTER
+          </h1>
+          <p className="mt-1 text-[9px] tracking-[0.1em] text-ink-dim">
+            AUTHORIZED ACCESS ONLY
+          </p>
+        </header>
+
+        <div className="mb-3.5">
+          <label className={FIELD_LABEL} htmlFor="email">
+            Email
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleLogin()}
+            className={FIELD}
+            placeholder="user@example.com"
+          />
         </div>
-        <div style={{ marginBottom: "14px" }}>
-          <div style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "6px" }}>EMAIL</div>
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
-            style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text-bright)", padding: "10px 12px", fontSize: "11px", fontFamily: "Space Mono, monospace", outline: "none", boxSizing: "border-box" }}
-            placeholder="user@example.com" />
+
+        <div className="mb-5">
+          <label className={FIELD_LABEL} htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && void handleLogin()}
+            className={FIELD}
+            placeholder="••••••••"
+          />
         </div>
-        <div style={{ marginBottom: "20px" }}>
-          <div style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "6px" }}>PASSWORD</div>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()}
-            style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text-bright)", padding: "10px 12px", fontSize: "11px", fontFamily: "Space Mono, monospace", outline: "none", boxSizing: "border-box" }}
-            placeholder="••••••••" />
-        </div>
+
         {error && (
-          <div style={{ marginBottom: "14px", padding: "8px 12px", fontSize: "10px", background: "var(--red-dim)", border: "1px solid var(--red)", color: "var(--red)", letterSpacing: "0.08em" }}>
+          <p
+            role="alert"
+            className="mb-3.5 border border-urgency-critical bg-urgency-critical-soft px-3 py-2 text-[10px] tracking-[0.08em] text-urgency-critical"
+          >
             ✗ {error.toUpperCase()}
-          </div>
+          </p>
         )}
-        <button onClick={handleLogin} disabled={loading}
-          style={{ width: "100%", padding: "12px", fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase", cursor: loading ? "not-allowed" : "pointer", border: "1px solid var(--cyan)", background: loading ? "var(--cyan-dim)" : "transparent", color: "var(--cyan)", fontFamily: "Space Mono, monospace", fontWeight: 700 }}>
+
+        <button
+          type="button"
+          onClick={() => void handleLogin()}
+          disabled={loading}
+          className="w-full cursor-pointer border border-accent bg-transparent px-3 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-accent transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:bg-accent-soft"
+        >
           {loading ? "AUTHENTICATING..." : "LOGIN →"}
         </button>
-        <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
-          <div style={{ fontSize: "8px", color: "var(--text-dim)", letterSpacing: "0.1em", marginBottom: "6px" }}>DEMO ACCOUNTS</div>
-          {/*
-            Demo shortcuts. These are FAKE test accounts, published here on
-            purpose so reviewers can sign in; see lib/users.ts. They guard
-            nothing real. Any secret-scanner hit here is a false positive.
-          */}
-          {/* gitleaks:allow  detect-secrets:allow */}
-          {[
-            { label: "Admin", email: "admin@example.com", pw: "dev-admin-password" },
-            { label: "Operator", email: "operator@example.com", pw: "dev-operator-password" },
-            { label: "Viewer", email: "viewer@example.com", pw: "dev-viewer-password" },
-          ].map(u => (
-            <div key={u.label} onClick={() => { setEmail(u.email); setPassword(u.pw); }}
-              style={{ fontSize: "9px", color: "var(--text-dim)", padding: "4px 0", cursor: "pointer", letterSpacing: "0.05em", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ color: "var(--cyan)", marginRight: "8px" }}>{u.label}</span>{u.email}
-            </div>
+
+        <div className="mt-5 border-t border-line pt-4">
+          <p className="mb-1.5 text-[8px] tracking-[0.1em] text-ink-dim">
+            DEMO ACCOUNTS
+          </p>
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.label}
+              type="button"
+              onClick={() => {
+                setEmail(account.email);
+                setPassword(account.pw);
+              }}
+              className="block w-full cursor-pointer border-b border-line py-1 text-left text-[9px] tracking-[0.05em] text-ink-dim transition-colors hover:text-ink"
+            >
+              <span className="mr-2 text-accent">{account.label}</span>
+              {account.email}
+            </button>
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

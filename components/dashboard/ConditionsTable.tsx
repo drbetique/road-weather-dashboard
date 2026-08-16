@@ -1,158 +1,246 @@
 "use client";
 
-import { useState } from "react";
-import { WeatherReading } from "@/types";
-import { Translations } from "@/lib/translations";
+import { useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Translations } from "@/lib/translations";
+import type { UserRole, WeatherReading } from "@/types";
 
-interface Props {
-  readings: WeatherReading[];
-  loading: boolean;
-  role: string;
-  t: Translations;
+interface ConditionsTableProps {
+  readonly readings: readonly WeatherReading[];
+  readonly loading: boolean;
+  readonly role: UserRole;
+  readonly t: Translations;
 }
 
-function frictionStatus(friction: number | null, t: Translations) {
-  if (friction === null) return { label: t.no_sensor, color: "var(--text-dim)", bg: "transparent", border: "var(--border)" };
-  if (friction < 0.25) return { label: t.road_dangerous, color: "var(--red)", bg: "var(--red-dim)", border: "var(--red)" };
-  if (friction < 0.4) return { label: t.road_slippery, color: "var(--yellow)", bg: "var(--amber-dim)", border: "var(--yellow)" };
-  return { label: t.road_good, color: "var(--green)", bg: "var(--green-dim)", border: "var(--green)" };
+type SortKey = "name" | "road_temp" | "friction";
+
+interface FrictionStatus {
+  readonly label: string;
+  readonly text: string;
+  readonly surface: string;
+  readonly border: string;
 }
 
-export function ConditionsTable({ readings, loading, role, t }: Props) {
+function frictionStatus(
+  friction: number | null,
+  t: Translations
+): FrictionStatus {
+  if (friction === null) {
+    return {
+      label: t.no_sensor,
+      text: "text-ink-dim",
+      surface: "bg-transparent",
+      border: "border-line",
+    };
+  }
+  if (friction < 0.25) {
+    return {
+      label: t.road_dangerous,
+      text: "text-urgency-critical",
+      surface: "bg-urgency-critical-soft",
+      border: "border-urgency-critical",
+    };
+  }
+  if (friction < 0.4) {
+    return {
+      label: t.road_slippery,
+      text: "text-urgency-preventive",
+      surface: "bg-urgency-preventive-soft",
+      border: "border-urgency-preventive",
+    };
+  }
+  return {
+    label: t.road_good,
+    text: "text-urgency-monitor",
+    surface: "bg-urgency-monitor-soft",
+    border: "border-urgency-monitor",
+  };
+}
+
+/** Sort key resolved to a comparable value; nulls sink to the bottom. */
+function sortValue(
+  reading: WeatherReading,
+  key: SortKey
+): string | number {
+  if (key === "name") return reading.station_name ?? "";
+  return reading[key] ?? Number.POSITIVE_INFINITY;
+}
+
+const TH =
+  "sticky top-0 z-10 whitespace-nowrap border-b border-line bg-surface-2 px-3 py-2 text-[8px] uppercase tracking-[0.15em] text-ink-dim select-none";
+const TD = "border-b border-line px-3 py-2";
+
+export function ConditionsTable({
+  readings,
+  loading,
+  role,
+  t,
+}: ConditionsTableProps) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<"name" | "road_temp" | "friction">("road_temp");
+  const [sortKey, setSortKey] = useState<SortKey>("road_temp");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const filtered = readings
-    .filter(r => r.station_name?.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      let av: any = a[sortKey === "name" ? "station_name" : sortKey] ?? Infinity;
-      let bv: any = b[sortKey === "name" ? "station_name" : sortKey] ?? Infinity;
-      if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
-      return sortAsc ? av - bv : bv - av;
-    });
+  const isAdmin = role === "admin";
+  const columnCount = isAdmin ? 7 : 5;
 
-  const handleSort = (key: typeof sortKey) => {
-    if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(true); }
-  };
+  const filtered = useMemo(() => {
+    const needle = search.toLowerCase();
+    return [...readings]
+      .filter((r) => (r.station_name ?? "").toLowerCase().includes(needle))
+      .sort((a, b) => {
+        const av = sortValue(a, sortKey);
+        const bv = sortValue(b, sortKey);
+        if (typeof av === "string" || typeof bv === "string") {
+          const cmp = String(av).localeCompare(String(bv));
+          return sortAsc ? cmp : -cmp;
+        }
+        return sortAsc ? av - bv : bv - av;
+      });
+  }, [readings, search, sortKey, sortAsc]);
 
-  const thStyle: React.CSSProperties = {
-    padding: "8px 12px", fontSize: "8px", color: "var(--text-dim)",
-    letterSpacing: "0.15em", textTransform: "uppercase",
-    borderBottom: "1px solid var(--border)", background: "var(--bg2)",
-    textAlign: "left", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
-  };
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortAsc((prev) => !prev);
+      return;
+    }
+    setSortKey(key);
+    setSortAsc(true);
+  }
+
+  function indicator(key: SortKey) {
+    if (sortKey !== key) return "";
+    return sortAsc ? "↑" : "↓";
+  }
 
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "10px 16px", borderBottom: "1px solid var(--border)",
-        background: "var(--bg2)", flexShrink: 0,
-      }}>
-        <div>
-          <span style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+    <section className="flex h-full flex-col">
+      <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line bg-surface-2 px-4 py-2.5">
+        <div className="flex min-w-0 items-baseline gap-2.5">
+          <h2 className="text-[9px] uppercase tracking-[0.15em] text-ink-dim">
             {t.road_conditions}
-          </span>
-          <span style={{ fontSize: "9px", color: "var(--cyan)", marginLeft: "10px" }}>
-            {loading ? "—" : `${filtered.length} / ${readings.length}`} {t.live.toLowerCase()}
+          </h2>
+          <span className="text-[9px] text-accent">
+            {loading ? "—" : `${filtered.length} / ${readings.length}`}{" "}
+            {t.live.toLowerCase()}
           </span>
         </div>
+
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder={t.search}
-          style={{
-            background: "var(--bg3)", border: "1px solid var(--border2)",
-            color: "var(--text)", fontFamily: "Space Mono, monospace",
-            fontSize: "10px", padding: "4px 10px", outline: "none", width: "180px",
-          }}
+          aria-label={t.search}
+          className="w-full min-w-0 border border-line-strong bg-surface-3 px-2.5 py-1 text-[10px] text-ink outline-none placeholder:text-ink-dim focus-visible:border-accent sm:w-45"
         />
-      </div>
+      </header>
 
-      <div style={{ flex: 1, overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
-          <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="w-full border-collapse text-[11px]">
+          <thead>
             <tr>
-              <th style={thStyle} onClick={() => handleSort("name")}>
-                {t.station} {sortKey === "name" ? (sortAsc ? "↑" : "↓") : ""}
+              <th
+                className={`${TH} cursor-pointer text-left`}
+                onClick={() => handleSort("name")}
+              >
+                {t.station} {indicator("name")}
               </th>
-              <th style={{ ...thStyle, textAlign: "right" }}>{t.air_temp}</th>
-              <th style={{ ...thStyle, textAlign: "right" }} onClick={() => handleSort("road_temp")}>
-                {t.road_temp} {sortKey === "road_temp" ? (sortAsc ? "↑" : "↓") : ""}
+              <th className={`${TH} text-right`}>{t.air_temp}</th>
+              <th
+                className={`${TH} cursor-pointer text-right`}
+                onClick={() => handleSort("road_temp")}
+              >
+                {t.road_temp} {indicator("road_temp")}
               </th>
-              <th style={{ ...thStyle, textAlign: "center" }} onClick={() => handleSort("friction")}>
-                {t.road_status} {sortKey === "friction" ? (sortAsc ? "↑" : "↓") : ""}
+              <th
+                className={`${TH} cursor-pointer text-center`}
+                onClick={() => handleSort("friction")}
+              >
+                {t.road_status} {indicator("friction")}
               </th>
-              <th style={{ ...thStyle, textAlign: "right" }}>{t.salt}</th>
-              {role === "admin" && <th style={{ ...thStyle, textAlign: "right" }}>Humidity</th>}
-              {role === "admin" && <th style={{ ...thStyle, textAlign: "right" }}>Wind m/s</th>}
+              <th className={`${TH} text-right`}>{t.salt}</th>
+              {isAdmin && <th className={`${TH} text-right`}>Humidity</th>}
+              {isAdmin && <th className={`${TH} text-right`}>Wind m/s</th>}
             </tr>
           </thead>
+
           <tbody>
             {loading ? (
-              Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i}>
-                  {[1,2,3,4,5].map(j => (
-                    <td key={j} style={{ padding: "10px 12px", borderBottom: "1px solid var(--border)" }}>
-                      <div style={{ height: "10px", background: "var(--border)", width: "60%", animation: "blink 1.5s infinite" }} />
+              Array.from({ length: 8 }, (_, row) => (
+                <tr key={row}>
+                  {Array.from({ length: columnCount }, (_, col) => (
+                    <td key={col} className={TD}>
+                      <Skeleton className="h-2.5 w-3/5" />
                     </td>
                   ))}
                 </tr>
               ))
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ padding: "32px", textAlign: "center", color: "var(--text-dim)", fontSize: "10px", letterSpacing: "0.1em" }}>
+                <td
+                  colSpan={columnCount}
+                  className="p-8 text-center text-[10px] tracking-[0.1em] text-ink-dim"
+                >
                   {t.loading}
                 </td>
               </tr>
-            ) : filtered.map((r, i) => {
-              const status = frictionStatus(r.friction ?? null, t);
-              const roadTempColor = r.road_temp !== null && r.road_temp <= 0 ? "var(--red)" : "var(--text-bright)";
-              const airTempColor = r.air_temp !== null && r.air_temp <= 0 ? "var(--cyan)" : "var(--text)";
-              return (
-                <tr key={i}
-                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg3)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                >
-                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", color: "var(--text-dim)", fontSize: "10px" }}>
-                    {r.station_name}
-                  </td>
-                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", color: airTempColor, fontWeight: 700 }}>
-                    {r.air_temp !== null ? `${r.air_temp}°` : "—"}
-                  </td>
-                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", color: roadTempColor, fontWeight: 700 }}>
-                    {r.road_temp !== null ? `${r.road_temp}°` : "—"}
-                  </td>
-                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "center" }}>
-                    <span style={{
-                      fontSize: "8px", padding: "2px 7px", textTransform: "uppercase",
-                      letterSpacing: "0.1em", fontWeight: 700,
-                      background: status.bg, color: status.color, border: `1px solid ${status.border}`,
-                    }}>
-                      {status.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", color: "var(--text-dim)" }}>
-                    {r.salt_amount !== null ? r.salt_amount : t.no_salt_data}
-                  </td>
-                  {role === "admin" && (
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", color: "var(--text-dim)" }}>
-                      {r.humidity !== null ? `${r.humidity}%` : "—"}
+            ) : (
+              filtered.map((reading) => {
+                const status = frictionStatus(reading.friction ?? null, t);
+                return (
+                  <tr
+                    key={reading.station_id}
+                    className="transition-colors hover:bg-surface-3"
+                  >
+                    <td className={`${TD} text-[10px] text-ink-dim`}>
+                      {reading.station_name}
                     </td>
-                  )}
-                  {role === "admin" && (
-                    <td style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", textAlign: "right", color: "var(--text-dim)" }}>
-                      {r.wind_speed !== null ? r.wind_speed : "—"}
+                    <td
+                      className={`${TD} text-right font-bold ${
+                        reading.air_temp !== null && reading.air_temp <= 0
+                          ? "text-accent"
+                          : "text-ink"
+                      }`}
+                    >
+                      {reading.air_temp !== null ? `${reading.air_temp}°` : "—"}
                     </td>
-                  )}
-                </tr>
-              );
-            })}
+                    <td
+                      className={`${TD} text-right font-bold ${
+                        reading.road_temp !== null && reading.road_temp <= 0
+                          ? "text-urgency-critical"
+                          : "text-ink-bright"
+                      }`}
+                    >
+                      {reading.road_temp !== null ? `${reading.road_temp}°` : "—"}
+                    </td>
+                    <td className={`${TD} text-center`}>
+                      <span
+                        className={`inline-block whitespace-nowrap border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em] ${status.border} ${status.surface} ${status.text}`}
+                      >
+                        {status.label}
+                      </span>
+                    </td>
+                    <td className={`${TD} text-right text-ink-dim`}>
+                      {reading.salt_amount !== null
+                        ? reading.salt_amount
+                        : t.no_salt_data}
+                    </td>
+                    {isAdmin && (
+                      <td className={`${TD} text-right text-ink-dim`}>
+                        {reading.humidity !== null ? `${reading.humidity}%` : "—"}
+                      </td>
+                    )}
+                    {isAdmin && (
+                      <td className={`${TD} text-right text-ink-dim`}>
+                        {reading.wind_speed !== null ? reading.wind_speed : "—"}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   );
 }

@@ -4,11 +4,72 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Every colour here is validated, not chosen by eye:
+   - text tokens clear WCAG AA (4.5:1) against the lightest surface
+   - the urgency scale is a monotonic lightness ramp, so severity is readable
+     without relying on hue at all
+   - chart series hues pass the six-check categorical palette validator
+     (lightness band, chroma floor, CVD separation, normal-vision floor,
+     contrast) and deliberately avoid the warm hues reserved for status
+
+   Declaring them in @theme is what turns each one into a Tailwind utility
+   (bg-surface-2, text-ink-dim, border-line, ...), which is what lets the
+   components drop inline style objects entirely.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Surfaces, darkest to lightest */
+  --color-surface:      #080c10;
+  --color-surface-2:    #0d1219;
+  --color-surface-3:    #111820;
+
+  /* Hairlines */
+  --color-line:         #1e2d3d;
+  --color-line-strong:  #243447;
+
+  /* Ink. ink-dim replaces the old #4a6278, which measured 2.8:1 and failed AA. */
+  --color-ink-bright:   #e8f4ff;   /* 17.6:1 on surface */
+  --color-ink:          #c8d8e8;   /* 13.5:1 */
+  --color-ink-dim:      #8299ad;   /*  6.6:1 — was 3.1:1 */
+
+  /* Brand accent */
+  --color-accent:       #00e5ff;
+  --color-accent-soft:  rgba(0, 229, 255, 0.08);
+
+  /* Urgency scale.
+     none/monitor sit outside the ramp: they mean "no action", so they stay
+     recessive. preventive..critical form a strictly decreasing lightness ramp
+     (L .668 -> .452 -> .297 -> .242), every step clearing 4.5:1. */
+  --color-urgency-none:       #8296a8;
+  --color-urgency-monitor:    #5fc4de;
+  --color-urgency-preventive: #f5d274;
+  --color-urgency-standard:   #f0a34a;
+  --color-urgency-urgent:     #e8724e;
+  --color-urgency-critical:   #e35a50;
+
+  --color-urgency-none-soft:       rgba(130, 150, 168, 0.10);
+  --color-urgency-monitor-soft:    rgba(95, 196, 222, 0.10);
+  --color-urgency-preventive-soft: rgba(245, 210, 116, 0.10);
+  --color-urgency-standard-soft:   rgba(240, 163, 74, 0.10);
+  --color-urgency-urgent-soft:     rgba(232, 114, 78, 0.12);
+  --color-urgency-critical-soft:   rgba(227, 90, 80, 0.12);
+
+  /* Chart series, assigned in fixed order and never cycled. */
+  --color-series-1:     #3987e5;   /* air temperature   */
+  --color-series-2:     #199e70;   /* road temperature  */
+  --color-series-3:     #9085e9;   /* last week         */
+  --color-series-4:     #d55181;   /* this week         */
+
+  --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Bridge for the shadcn/ui primitives, which read these semantic names. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
   --color-border: var(--border);
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -22,35 +83,18 @@
 }
 
 :root {
-  --bg:           #080c10;
-  --bg2:          #0d1219;
-  --bg3:          #111820;
-  --border:       #1e2d3d;
-  --border2:      #243447;
-  --cyan:         #00e5ff;
-  --cyan-dim:     rgba(0,229,255,0.08);
-  --amber:        #ffb300;
-  --amber-dim:    rgba(255,179,0,0.08);
-  --red:          #ff3b3b;
-  --red-dim:      rgba(255,59,59,0.08);
-  --green:        #00e676;
-  --green-dim:    rgba(0,230,118,0.08);
-  --yellow:       #ffd600;
-  --text:         #c8d8e8;
-  --text-dim:     #4a6278;
-  --text-bright:  #e8f4ff;
-  --text-muted:   #4a6278;
-  --background:   #080c10;
-  --foreground:   #c8d8e8;
-  --card:         #0d1219;
-  --card-foreground: #c8d8e8;
-  --primary:      #00e5ff;
+  --background:         #080c10;
+  --foreground:         #c8d8e8;
+  --card:               #0d1219;
+  --card-foreground:    #c8d8e8;
+  --primary:            #00e5ff;
   --primary-foreground: #080c10;
-  --muted:        #111820;
-  --muted-foreground: #4a6278;
-  --destructive:  #ff3b3b;
-  --ring:         #1e2d3d;
-  --input:        #1e2d3d;
+  --muted:              #111820;
+  --muted-foreground:   #8299ad;
+  --destructive:        #e35a50;
+  --border:             #1e2d3d;
+  --ring:               #1e2d3d;
+  --input:              #1e2d3d;
 }
 
 * { box-sizing: border-box; }
@@ -58,15 +102,17 @@
 html { color-scheme: dark; }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Mono', 'Courier New', monospace;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
   font-size: 12px;
   min-height: 100vh;
   overflow-x: hidden;
+  /* Readings sit in columns; proportional digits make them jitter on refresh. */
+  font-variant-numeric: tabular-nums;
 }
 
-/* Subtle scanline effect */
+/* Instrument-panel scanline. Decorative only. */
 body::after {
   content: '';
   position: fixed;
@@ -75,21 +121,28 @@ body::after {
     0deg,
     transparent,
     transparent 2px,
-    rgba(0,0,0,0.06) 2px,
-    rgba(0,0,0,0.06) 4px
+    rgba(0, 0, 0, 0.06) 2px,
+    rgba(0, 0, 0, 0.06) 4px
   );
   pointer-events: none;
   z-index: 9999;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border2); }
-::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
-/* Font imports via next/font handled in layout.tsx */
-@font-face {
-  font-family: 'Space Mono';
-  font-style: normal;
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-line-strong); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-dim); }
+
+/* Keyboard focus must stay visible everywhere. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }

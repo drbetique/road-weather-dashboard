@@ -1,54 +1,50 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
-import { Bell, BellOff, X } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useState } from "react";
 
 interface NotificationBannerProps {
-  permission: NotificationPermission;
-  onRequest: () => void;
+  readonly permission: NotificationPermission;
+  readonly onRequest: () => void;
 }
 
-export function NotificationBanner({ permission, onRequest }: NotificationBannerProps) {
+export function NotificationBanner({
+  permission,
+  onRequest,
+}: NotificationBannerProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (permission === "granted" || permission === "denied" || dismissed) return null;
+  if (permission === "granted" || permission === "denied" || dismissed) {
+    return null;
+  }
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -8 }}
-        className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl"
-        style={{
-          background: "rgba(59,130,246,0.08)",
-          border: "1px solid rgba(59,130,246,0.25)",
-        }}
-      >
-        <div className="flex items-center gap-2.5">
-          <Bell size={14} style={{ color: "#60a5fa" }} />
-          <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-            Enable browser notifications to receive alerts when roads need immediate attention.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={onRequest}
-            className="px-3 py-1 rounded-lg text-xs font-medium transition-all"
-            style={{ background: "rgba(59,130,246,0.2)", border: "1px solid rgba(59,130,246,0.4)", color: "#60a5fa" }}
-          >
-            Enable alerts
-          </button>
-          <button
-            onClick={() => setDismissed(true)}
-            className="p-1 rounded-lg transition-all"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <X size={12} />
-          </button>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+    <div className="flex flex-wrap items-center justify-between gap-3 border border-urgency-monitor bg-urgency-monitor-soft px-4 py-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Bell size={14} className="shrink-0 text-urgency-monitor" aria-hidden="true" />
+        <p className="text-xs text-ink">
+          Enable browser notifications to receive alerts when roads need
+          immediate attention.
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onRequest}
+          className="cursor-pointer border border-urgency-monitor bg-urgency-monitor-soft px-3 py-1 text-xs font-medium text-urgency-monitor transition-colors hover:bg-surface-3"
+        >
+          Enable alerts
+        </button>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+          className="cursor-pointer p-1 text-ink-dim transition-colors hover:text-ink"
+        >
+          <X size={12} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }

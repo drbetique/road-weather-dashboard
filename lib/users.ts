@@ -58,6 +58,14 @@ const MOCK_USERS: (User & { passwordHash: string })[] = [
 ];
 
 /**
+ * Stand-in hash compared against when no account matches, so an unknown email
+ * costs the same time as a wrong password. Not a credential: it corresponds to
+ * no account and can never authenticate.
+ */
+const DUMMY_HASH =
+  "$2b$10$ODN9OhUtLSbjDPnkk4Q.2On3clL9KCtzbyu/tVOno.AKLXj6yZn/.";
+
+/**
  * Verifies a login attempt, returning the user on success and null otherwise.
  *
  * Runs a bcrypt comparison even when the email is unknown, so that a missing
@@ -75,7 +83,7 @@ export async function verifyCredentials(
   );
 
   // Dummy hash burns the same work factor when no account matches.
-  const hash = record?.passwordHash ?? MOCK_USERS[0].passwordHash;
+  const hash = record?.passwordHash ?? DUMMY_HASH;
   const ok = await bcrypt.compare(password, hash);
 
   if (!record || !ok) return null;

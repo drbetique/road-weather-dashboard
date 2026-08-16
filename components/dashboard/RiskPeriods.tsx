@@ -1,25 +1,60 @@
 "use client";
 
-import { Translations } from "@/lib/translations";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Translations } from "@/lib/translations";
 
 interface RiskPeriod {
-  start: string;
-  end: string;
-  max_risk_level: number;
-  risk_types?: string[];
+  readonly start: string;
+  readonly end: string;
+  readonly max_risk_level: number;
+  readonly risk_types?: readonly string[];
 }
 
-interface Props {
-  risks: RiskPeriod[];
-  loading: boolean;
-  t: Translations;
+interface RiskPeriodsProps {
+  readonly risks: readonly RiskPeriod[];
+  readonly loading: boolean;
+  readonly t: Translations;
 }
 
-function riskConfig(level: number, t: Translations) {
-  if (level >= 4) return { label: t.forecast_critical, color: "var(--red)", bg: "var(--red-dim)", border: "var(--red)" };
-  if (level >= 3) return { label: t.risk_high, color: "var(--amber)", bg: "var(--amber-dim)", border: "var(--amber)" };
-  if (level >= 2) return { label: t.risk_medium, color: "var(--yellow)", bg: "var(--amber-dim)", border: "var(--yellow)" };
-  return { label: t.risk_low, color: "var(--green)", bg: "var(--green-dim)", border: "var(--green)" };
+interface RiskStyle {
+  readonly label: string;
+  readonly text: string;
+  readonly surface: string;
+  readonly border: string;
+}
+
+/** Risk level shares the urgency ramp, so severity reads the same everywhere. */
+function riskStyle(level: number, t: Translations): RiskStyle {
+  if (level >= 4) {
+    return {
+      label: t.forecast_critical,
+      text: "text-urgency-critical",
+      surface: "bg-urgency-critical-soft",
+      border: "border-urgency-critical",
+    };
+  }
+  if (level >= 3) {
+    return {
+      label: t.risk_high,
+      text: "text-urgency-urgent",
+      surface: "bg-urgency-urgent-soft",
+      border: "border-urgency-urgent",
+    };
+  }
+  if (level >= 2) {
+    return {
+      label: t.risk_medium,
+      text: "text-urgency-preventive",
+      surface: "bg-urgency-preventive-soft",
+      border: "border-urgency-preventive",
+    };
+  }
+  return {
+    label: t.risk_low,
+    text: "text-urgency-monitor",
+    surface: "bg-urgency-monitor-soft",
+    border: "border-urgency-monitor",
+  };
 }
 
 function riskTypeLabel(type: string, t: Translations): string {
@@ -29,78 +64,80 @@ function riskTypeLabel(type: string, t: Translations): string {
   return type.replace(/_/g, " ");
 }
 
-function fmt(dateStr: string) {
-  try {
-    return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch { return dateStr; }
+function formatTime(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-export function RiskPeriods({ risks, loading, t }: Props) {
+export function RiskPeriods({ risks, loading, t }: RiskPeriodsProps) {
   return (
-    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{
-        padding: "8px 14px", borderBottom: "1px solid var(--border)",
-        display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0,
-      }}>
-        <span style={{ fontSize: "9px", color: "var(--text-dim)", letterSpacing: "0.15em", textTransform: "uppercase" }}>
+    <section className="flex h-full min-h-56 flex-col">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3.5 py-2">
+        <h2 className="text-[9px] uppercase tracking-[0.15em] text-ink-dim">
           {t.upcoming_risks}
+        </h2>
+        <span
+          className={`text-[9px] ${
+            risks.length > 0 ? "text-urgency-standard" : "text-urgency-monitor"
+          }`}
+        >
+          {risks.length > 0 ? risks.length : "—"}
         </span>
-        <span style={{ fontSize: "9px", color: risks.length > 0 ? "var(--amber)" : "var(--green)" }}>
-          {risks.length > 0 ? `${risks.length}` : "—"}
-        </span>
-      </div>
+      </header>
 
-      <div style={{ flex: 1, overflow: "auto", padding: "8px" }}>
+      <div className="min-h-0 flex-1 overflow-auto p-2">
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {[1, 2].map(i => (
-              <div key={i} style={{ height: "50px", background: "var(--bg3)", border: "1px solid var(--border)", animation: "blink 1.5s infinite" }} />
-            ))}
+          <div className="flex flex-col gap-1.5">
+            <Skeleton className="h-12" />
+            <Skeleton className="h-12" />
           </div>
         ) : risks.length === 0 ? (
-          <div style={{ padding: "24px", textAlign: "center" }}>
-            <div style={{ fontSize: "10px", color: "var(--green)", letterSpacing: "0.1em" }}>{t.no_risk_periods.toUpperCase()}</div>
-          </div>
+          <p className="p-6 text-center text-[10px] tracking-[0.1em] text-urgency-monitor">
+            {t.no_risk_periods.toUpperCase()}
+          </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {risks.map((r, i) => {
-              const c = riskConfig(r.max_risk_level, t);
+          <ul className="flex flex-col gap-1.5">
+            {risks.map((risk) => {
+              const style = riskStyle(risk.max_risk_level, t);
               return (
-                <div key={i} style={{
-                  background: c.bg, border: `1px solid ${c.border}`, padding: "10px 12px",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-bright)" }}>
-                      {fmt(r.start)} — {fmt(r.end)}
+                <li
+                  key={`${risk.start}-${risk.end}`}
+                  className={`border p-3 ${style.border} ${style.surface}`}
+                >
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-ink-bright">
+                      {formatTime(risk.start)} — {formatTime(risk.end)}
                     </span>
-                    <span style={{
-                      fontSize: "8px", padding: "2px 6px", textTransform: "uppercase",
-                      letterSpacing: "0.1em", fontWeight: 700, color: c.color, border: `1px solid ${c.border}`,
-                    }}>
-                      {c.label}
+                    <span
+                      className={`shrink-0 border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.1em] ${style.border} ${style.text}`}
+                    >
+                      {style.label}
                     </span>
                   </div>
-                  <div style={{ fontSize: "9px", color: "var(--text-dim)", marginBottom: r.risk_types?.length ? "4px" : 0 }}>
-                    {t.apply_salt_before} {fmt(r.start)}
-                  </div>
-                  {r.risk_types && r.risk_types.length > 0 && (
-                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                      {r.risk_types.map((type, j) => (
-                        <span key={j} style={{
-                          fontSize: "8px", padding: "1px 5px",
-                          background: "rgba(0,0,0,0.3)", color: "var(--text-dim)",
-                        }}>
+
+                  <p className="text-[9px] text-ink-dim">
+                    {t.apply_salt_before} {formatTime(risk.start)}
+                  </p>
+
+                  {risk.risk_types && risk.risk_types.length > 0 && (
+                    <ul className="mt-1 flex flex-wrap gap-1">
+                      {risk.risk_types.map((type) => (
+                        <li
+                          key={type}
+                          className="bg-surface px-1.5 py-px text-[8px] text-ink-dim"
+                        >
                           {riskTypeLabel(type, t)}
-                        </span>
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </div>
-    </div>
+    </section>
   );
 }

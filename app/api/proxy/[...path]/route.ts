@@ -51,7 +51,8 @@ export async function GET(
   if (!path?.length || path.some((s) => !s || s === "." || s === "..")) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
-  if (!ALLOWED_PREFIXES.includes(path[0])) {
+  const [prefix] = path;
+  if (prefix === undefined || !ALLOWED_PREFIXES.includes(prefix)) {
     return NextResponse.json({ error: "Unknown endpoint" }, { status: 404 });
   }
 
