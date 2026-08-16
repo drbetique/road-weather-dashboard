@@ -76,6 +76,9 @@ export async function GET(
         "Content-Type":
           upstream.headers.get("Content-Type") ?? "application/json",
         "Cache-Control": "no-store",
+        // The proxy is same-origin with the app, so stop the browser from
+        // sniffing an upstream response into an executable content type.
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (err) {
